@@ -22,25 +22,25 @@ jobs:
         include:
           - target: x86_64-unknown-linux-gnu
             os: ubuntu-latest
-            output: sx128x-util
+            output: at86rf23x-util
             use_cross: false
             experimental: false
             args: --features util,driver-pal/hal-cp2130,driver-pal/hal-linux
           - target: armv7-unknown-linux-gnueabihf 
             os: ubuntu-20.04
-            output: sx128x-util
+            output: at86rf23x-util
             use_cross: true
             experimental: true
             args: --features util,driver-pal/hal-cp2130,driver-pal/hal-linux
           - target: x86_64-apple-darwin
             os: macos-latest
-            output: sx128x-util
+            output: at86rf23x-util
             use_cross: false
             experimental: false
             args: --no-default-features --features util,driver-pal/hal-cp2130,patch-unknown-state
           - target: x86_64-pc-windows-msvc
             os: windows-latest
-            output: sx128x-util.exe
+            output: at86rf23x-util.exe
             use_cross: false
             experimental: true
             args: --no-default-features --features util,driver-pal/hal-cp2130,patch-unknown-state
@@ -114,7 +114,7 @@ jobs:
     - name: Copy / Rename utility
       run: |
         cp target/${{ matrix.target }}/release/${{ matrix.output }} ${{ matrix.output }}-${{ matrix.target }}
-        tar -czvf sx128x-util-${{ matrix.target }}.tgz ${{ matrix.output }}-${{ matrix.target }}
+        tar -czvf at86rf23x-util-${{ matrix.target }}.tgz ${{ matrix.output }}-${{ matrix.target }}
 
     - name: Upload utility artifacts
       uses: actions/upload-artifact@v1
@@ -127,8 +127,8 @@ jobs:
       uses: svenstaro/upload-release-action@v2
       with:
         repo_token: ${{ secrets.GITHUB_TOKEN }}
-        file: sx128x-util-${{ matrix.target }}.tgz
-        asset_name: sx128x-util-${{ matrix.target }}.tgz
+        file: at86rf23x-util-${{ matrix.target }}.tgz
+        asset_name: at86rf23x-util-${{ matrix.target }}.tgz
         tag: ${{ github.ref }}
         overwrite: true
 
