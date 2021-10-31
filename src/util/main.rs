@@ -1,4 +1,5 @@
 
+extern crate std;
 
 use log::{debug, trace, info, error};
 use structopt::StructOpt;

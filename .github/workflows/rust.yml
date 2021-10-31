@@ -37,13 +37,13 @@ jobs:
             output: at86rf23x-util
             use_cross: false
             experimental: false
-            args: --no-default-features --features util,driver-pal/hal-cp2130,patch-unknown-state
+            args: --no-default-features --features util,driver-pal/hal-cp2130
           - target: x86_64-pc-windows-msvc
             os: windows-latest
             output: at86rf23x-util.exe
             use_cross: false
             experimental: true
-            args: --no-default-features --features util,driver-pal/hal-cp2130,patch-unknown-state
+            args: --no-default-features --features util,driver-pal/hal-cp2130
 
     steps:
     - uses: actions/checkout@v2

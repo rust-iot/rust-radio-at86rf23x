@@ -32,7 +32,7 @@ num_enum = { version = "0.5.4", default-features = false }
 
 
 [[bin]]
-name = "at86rf233-util"
+name = "at86rf23x-util"
 path = "src/util/main.rs"
 required-features = [ "util" ]
 
