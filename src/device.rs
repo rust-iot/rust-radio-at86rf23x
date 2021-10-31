@@ -1,5 +1,8 @@
 
-#[derive(Copy, Clone, PartialEq, Debug)]
+use num_enum::TryFromPrimitive;
+
+#[derive(Copy, Clone, PartialEq, Debug, TryFromPrimitive)]
+#[repr(u8)]
 pub enum Register {
     TrxStatus       = 0x01,
     TrxCmd          = 0x02,
@@ -64,7 +67,8 @@ bitflags::bitflags!{
     }
 }
 
-#[derive(Copy, Clone, PartialEq, Debug)]
+#[derive(Copy, Clone, PartialEq, Debug, TryFromPrimitive)]
+#[repr(u8)]
 pub enum TrxStatus {
     POn = 0x00,
     BusyRx = 0x01,
@@ -79,6 +83,21 @@ pub enum TrxStatus {
     RxAackOn = 0x16,
     TxAretOn = 0x19,
     StateTransition = 0x1F,
+}
+
+#[derive(Copy, Clone, PartialEq, Debug, TryFromPrimitive)]
+#[repr(u8)]
+pub enum TrxCmd {
+    Nop = 0x00,
+    TxStart = 0x02,
+    ForceTrxOff = 0x03,
+    ForcePllOn = 0x04,
+    RxOn = 0x06,
+    TrxOff = 0x08,
+    PllOn = 0x09,
+    PrepDeepSleep = 0x10,
+    RxAackOn = 0x16,
+    TxAretOn = 0x19,
 }
 
 #[cfg(test)]

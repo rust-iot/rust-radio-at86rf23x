@@ -6,10 +6,12 @@ use structopt::StructOpt;
 use tracing_subscriber::FmtSubscriber;
 use tracing_subscriber::filter::{LevelFilter, EnvFilter};
 
-use driver_pal::hal::{HalInst, HalDelay, DeviceConfig};
+use driver_pal::hal::{HalInst, HalSpi, HalOutputPin, HalInputPin, HalDelay, HalError, DeviceConfig};
 
 use radio::*;
 use radio_at86rf23x::prelude::*;
+
+type Radio = At86Rf23x<Io<HalSpi, HalOutputPin, HalOutputPin, HalOutputPin, HalInputPin, HalDelay>, HalError, HalError, HalError>;
 
 #[derive(Debug, PartialEq, Clone, StructOpt)]
 pub enum Command {
@@ -30,7 +32,7 @@ pub struct Options {
 }
 
 
-fn main() -> anyhow::Result<()> {
+fn main() -> Result<(), anyhow::Error> {
     // Load options
     let opts = Options::from_args();
 
@@ -68,12 +70,27 @@ fn main() -> anyhow::Result<()> {
     };
 
     // Instantiate radio
-    let mut _radio = match At86Rf23x::new(io) {
+    let mut radio = match At86Rf23x::new(io) {
         Ok(r) => r,
         Err(e) => {
             return Err(anyhow::anyhow!("Failed to initialise radio: {:?}", e));
         }
     };
 
-    todo!()
+    if let Err(e) = handle_command(&mut radio, &opts.command) {
+        return Err(anyhow::anyhow!("Command failed: {:?}", e));
+    }
+
+    Ok(())
+}
+
+fn handle_command(radio: &mut Radio, cmd: &Command) -> Result<(), Error<HalError, HalError, HalError>> {
+    match cmd {
+        Command::Info => {
+            let i = radio.info()?;
+            info!("Radio: {:02x?}", i);
+        },
+    }
+
+    Ok(())
 }
