@@ -1,12 +1,8 @@
 use core::fmt::Debug;
 
-use embedded_hal::{
-    spi::blocking::*,
-    digital::blocking::*,
-    delay::blocking::*,
-};
+use embedded_hal::{delay::blocking::*, digital::blocking::*, spi::blocking::*};
 
-use crate::{Error, device::Register, device::CommandFlags};
+use crate::{device::CommandFlags, device::Register, Error};
 
 /// IO container object to centralise IO traits and bounds
 pub struct Io<Spi, Cs, Rst, SlpTr, Irq, Delay> {
@@ -15,7 +11,7 @@ pub struct Io<Spi, Cs, Rst, SlpTr, Irq, Delay> {
     pub rst: Rst,
     pub slp_tr: SlpTr,
     pub irq: Irq,
-    pub delay: Delay
+    pub delay: Delay,
 }
 
 /// Base trait provides methods for underlying device interaction
@@ -24,7 +20,8 @@ pub trait Base<SpiErr: Debug, PinErr: Debug, DelayErr: Debug> {
     fn spi_write(&mut self, cmd: u8, data: &[u8]) -> Result<(), Error<SpiErr, PinErr, DelayErr>>;
 
     /// SPI read command
-    fn spi_read(&mut self, cmd: u8, data: &mut [u8]) -> Result<(), Error<SpiErr, PinErr, DelayErr>>;
+    fn spi_read(&mut self, cmd: u8, data: &mut [u8])
+        -> Result<(), Error<SpiErr, PinErr, DelayErr>>;
 
     /// Assert slp_tr
     fn sleep(&mut self, sleep: bool) -> Result<(), Error<SpiErr, PinErr, DelayErr>>;
@@ -34,24 +31,22 @@ pub trait Base<SpiErr: Debug, PinErr: Debug, DelayErr: Debug> {
 }
 
 /// Base trait implementation for Io objects
-impl <Spi, SpiErr, Cs, Rst, SlpTr, Irq, PinErr, Delay, DelayErr> Base<SpiErr, PinErr, DelayErr> for Io<Spi, Cs, Rst, SlpTr, Irq, Delay>
+impl<Spi, SpiErr, Cs, Rst, SlpTr, Irq, PinErr, Delay, DelayErr> Base<SpiErr, PinErr, DelayErr>
+    for Io<Spi, Cs, Rst, SlpTr, Irq, Delay>
 where
-    Spi: Transactional<u8, Error=SpiErr>,
-    Cs: OutputPin<Error=PinErr>,
-    Rst: OutputPin<Error=PinErr>,
-    SlpTr: OutputPin<Error=PinErr>,
-    Irq: InputPin<Error=PinErr>,
-    Delay: DelayMs<u32, Error=DelayErr> + DelayUs<u32, Error=DelayErr>,
+    Spi: Transactional<u8, Error = SpiErr>,
+    Cs: OutputPin<Error = PinErr>,
+    Rst: OutputPin<Error = PinErr>,
+    SlpTr: OutputPin<Error = PinErr>,
+    Irq: InputPin<Error = PinErr>,
+    Delay: DelayMs<u32, Error = DelayErr> + DelayUs<u32, Error = DelayErr>,
     SpiErr: Debug,
     PinErr: Debug,
     DelayErr: Debug,
 {
     fn spi_write(&mut self, cmd: u8, data: &[u8]) -> Result<(), Error<SpiErr, PinErr, DelayErr>> {
         let cmd = [cmd];
-        let mut t = [
-            Operation::Write(&cmd),
-            Operation::Write(data),
-        ];
+        let mut t = [Operation::Write(&cmd), Operation::Write(data)];
 
         self.cs.set_low().map_err(Error::Pin)?;
 
@@ -62,12 +57,13 @@ where
         r
     }
 
-    fn spi_read(&mut self, cmd: u8, data: &mut [u8]) -> Result<(), Error<SpiErr, PinErr, DelayErr>> {
+    fn spi_read(
+        &mut self,
+        cmd: u8,
+        data: &mut [u8],
+    ) -> Result<(), Error<SpiErr, PinErr, DelayErr>> {
         let cmd = [cmd];
-        let mut t = [
-            Operation::Write(&cmd),
-            Operation::Transfer(data),
-        ];
+        let mut t = [Operation::Write(&cmd), Operation::Transfer(data)];
 
         self.cs.set_low().map_err(Error::Pin)?;
 
@@ -107,5 +103,5 @@ where
             true => self.slp_tr.set_high().map_err(Error::Pin),
             false => self.slp_tr.set_low().map_err(Error::Pin),
         }
-    }    
+    }
 }

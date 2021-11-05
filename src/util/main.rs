@@ -1,23 +1,29 @@
-
 extern crate std;
 
-use log::{debug, trace, info, error};
+use log::{debug, error, info, trace};
 use structopt::StructOpt;
 
+use tracing_subscriber::filter::{EnvFilter, LevelFilter};
 use tracing_subscriber::FmtSubscriber;
-use tracing_subscriber::filter::{LevelFilter, EnvFilter};
 
-use driver_pal::hal::{HalInst, HalSpi, HalOutputPin, HalInputPin, HalDelay, HalError, DeviceConfig};
+use driver_pal::hal::{
+    DeviceConfig, HalDelay, HalError, HalInputPin, HalInst, HalOutputPin, HalSpi,
+};
 
 use radio::*;
 use radio_at86rf23x::prelude::*;
 
-type Radio = At86Rf23x<Io<HalSpi, HalOutputPin, HalOutputPin, HalOutputPin, HalInputPin, HalDelay>, HalError, HalError, HalError>;
+type Radio = At86Rf23x<
+    Io<HalSpi, HalOutputPin, HalOutputPin, HalOutputPin, HalInputPin, HalDelay>,
+    HalError,
+    HalError,
+    HalError,
+>;
 
 #[derive(Debug, PartialEq, Clone, StructOpt)]
 pub enum Command {
     Info,
-} 
+}
 
 #[derive(Debug, StructOpt)]
 pub struct Options {
@@ -32,14 +38,12 @@ pub struct Options {
     pub log_level: LevelFilter,
 }
 
-
 fn main() -> Result<(), anyhow::Error> {
     // Load options
     let opts = Options::from_args();
 
     // Initialise logging
-    let filter = EnvFilter::from_default_env()
-        .add_directive(opts.log_level.into());
+    let filter = EnvFilter::from_default_env().add_directive(opts.log_level.into());
     let _ = FmtSubscriber::builder()
         .with_env_filter(filter)
         .without_time()
@@ -47,7 +51,7 @@ fn main() -> Result<(), anyhow::Error> {
 
     debug!("Connecting to platform SPI");
 
-    let HalInst{base: _, spi, pins} = match HalInst::load(&opts.spi_config) {
+    let HalInst { base: _, spi, pins } = match HalInst::load(&opts.spi_config) {
         Ok(v) => v,
         Err(e) => {
             return Err(anyhow::anyhow!("Error connecting to platform HAL: {:?}", e));
@@ -57,7 +61,7 @@ fn main() -> Result<(), anyhow::Error> {
     debug!("Setting up radio device");
 
     // Build IO object
-    let io = Io{
+    let io = Io {
         spi,
         cs: pins.cs,
         rst: pins.reset,
@@ -67,7 +71,7 @@ fn main() -> Result<(), anyhow::Error> {
         irq: pins.ready,
         //clkm: Option::<()>::None,
         //dig2: Option::<()>::None,
-        delay: HalDelay{},
+        delay: HalDelay {},
     };
 
     // Instantiate radio
@@ -85,12 +89,15 @@ fn main() -> Result<(), anyhow::Error> {
     Ok(())
 }
 
-fn handle_command(radio: &mut Radio, cmd: &Command) -> Result<(), Error<HalError, HalError, HalError>> {
+fn handle_command(
+    radio: &mut Radio,
+    cmd: &Command,
+) -> Result<(), Error<HalError, HalError, HalError>> {
     match cmd {
         Command::Info => {
             let i = radio.info()?;
             info!("Radio: {:02x?}", i);
-        },
+        }
     }
 
     Ok(())
