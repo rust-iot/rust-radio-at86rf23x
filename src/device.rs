@@ -2,6 +2,22 @@ use num_enum::TryFromPrimitive;
 
 use modular_bitfield::prelude::*;
 
+/// AT86RF23x device configuration
+#[derive(Clone, PartialEq, Debug)]
+#[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
+#[cfg_attr(feature = "defmt", derive(defmt::Format))]
+pub struct Config {
+    pub xtal_mode: XtalMode,
+}
+
+impl Default for Config {
+    fn default() -> Self {
+        Self { 
+            xtal_mode: XtalMode::InternalOscillator
+        }
+    }
+}
+
 #[derive(Copy, Clone, PartialEq, Debug, TryFromPrimitive)]
 #[repr(u8)]
 pub enum Register {
@@ -363,11 +379,19 @@ impl Reg for Batmon {
 #[cfg_attr(feature = "defmt", derive(defmt::Format))]
 #[repr(u8)]
 pub struct XoscCtrl {
-    pub xtal_mode: B4,
+    pub xtal_mode: XtalMode,
     pub xtal_trim: B4,
 }
 impl Reg for XoscCtrl {
     const ADDRESS: Register = Register::XoscCtrl;
+}
+
+#[derive(Copy, Clone, PartialEq, Debug, BitfieldSpecifier)]
+#[cfg_attr(feature = "defmt", derive(defmt::Format))]
+#[bits = 4]
+pub enum XtalMode {
+    ExternalReference = 0x5,
+    InternalOscillator = 0xF,
 }
 
 #[bitfield]

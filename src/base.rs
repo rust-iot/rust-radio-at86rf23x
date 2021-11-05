@@ -28,6 +28,12 @@ pub trait Base<SpiErr: Debug, PinErr: Debug, DelayErr: Debug> {
 
     /// Control SLP_TR pin
     fn slp_tr(&mut self, state: bool) -> Result<(), Error<SpiErr, PinErr, DelayErr>>;
+
+    /// Read IRQ pin state
+    fn irq(&mut self) -> Result<bool, Error<SpiErr, PinErr, DelayErr>>;
+    fn delay_ms(&mut self, ms: u32) -> Result<(), Error<SpiErr, PinErr, DelayErr>>;
+
+    fn delay_us(&mut self, us: u32) -> Result<(), Error<SpiErr, PinErr, DelayErr>>;
 }
 
 /// Base trait implementation for Io objects
@@ -104,4 +110,16 @@ where
             false => self.slp_tr.set_low().map_err(Error::Pin),
         }
     }
+
+    fn irq(&mut self) -> Result<bool, Error<SpiErr, PinErr, DelayErr>> {
+        self.irq.is_high().map_err(Error::Pin)
+    }
+    fn delay_ms(&mut self, ms: u32) -> Result<(), Error<SpiErr, PinErr, DelayErr>> {
+        self.delay.delay_ms(ms).map_err(Error::Delay)
+    }
+
+    fn delay_us(&mut self, us: u32) -> Result<(), Error<SpiErr, PinErr, DelayErr>> {
+        self.delay.delay_us(us).map_err(Error::Delay)
+    }
 }
+

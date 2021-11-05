@@ -217,6 +217,8 @@ where
             _ => return Err(Error::Unsupported),
         };
 
+        debug!("Set state cmd: {:?} (requested: {:?})", v, s);
+
         // TODO: check state is not StateTransitionInProgress before applying
 
         // Write command
@@ -228,7 +230,6 @@ where
 
         // Read status register
         let raw = self.reg_read(Register::TrxStatus)?;
-        debug!("TRX status: 0x{:02x}", raw);
 
         let trx_status = match TrxStatus::try_from(raw) {
             Ok(v) => v,
@@ -252,6 +253,9 @@ where
             StateTransition => State::Busy,
         };
 
+        debug!("TRX status: 0x{:02x} state: {:?}", raw, s);
+
+
         Ok(s)
     }
 }
@@ -267,7 +271,13 @@ where
     type Error = Error<SpiErr, PinErr, DelayErr>;
 
     fn get_interrupts(&mut self, _: bool) -> Result<Self::Irq, Self::Error> {
-        self.reg_read2::<Irqs>()
+        let irqs = self.reg_read2::<Irqs>()?;
+
+        if !irqs.is_empty() {
+            debug!("IRQs: {:?}", irqs);
+        }
+
+        Ok(irqs)
     }
 }
 
@@ -279,8 +289,6 @@ pub struct Ch {
     pub bitrate: OqpskDataRate,
     /// Channel frequency
     pub channel: Channel,
-    /// Channel power
-    pub power: Power,
 }
 
 impl<B, SpiErr, PinErr, DelayErr> radio::Channel for At86Rf23x<B, SpiErr, PinErr, DelayErr>
@@ -306,9 +314,6 @@ where
         // Load new bitrate
         self.reg_update::<TrxCtrl2, _>(|r| r.set_oqpsk_data_rate(ch.bitrate) )?;
 
-        // Set power
-        self.reg_update::<PhyTxPwr, _>(|r| r.set_tx_pwr(ch.power) )?;
-
         Ok(())
     }
 }
@@ -323,7 +328,7 @@ where
     type Error = Error<SpiErr, PinErr, DelayErr>;
 
     fn delay_us(&mut self, us: u32) -> Result<(), Self::Error> {
-        todo!()
+        self.hal.delay_us(us)
     }
 }
 
@@ -336,9 +341,14 @@ where
 {
     type Error = Error<SpiErr, PinErr, DelayErr>;
 
-    fn set_power(&mut self, power: i8) -> Result<(), Self::Error> {
-        // TODO: convert power from int to nearest 
-        todo!()
+    fn set_power(&mut self, _power: i8) -> Result<(), Self::Error> {
+        // TODO: convert power from int to nearest power value
+        let p = Power::P4dBm;
+
+        // Update power register
+        self.reg_update::<PhyTxPwr, _>(|r| r.set_tx_pwr(p) )?;
+
+        Ok(())
     }
 
 }
@@ -353,7 +363,8 @@ where
     type Error = Error<SpiErr, PinErr, DelayErr>;
 
     fn poll_rssi(&mut self) -> Result<i16, Self::Error> {
-        todo!()
+        let r = self.reg_read2::<PhyRssi>()?;
+        Ok(-94 + r.rssi() as i16 * 3)
     }
 
 }
@@ -371,34 +382,52 @@ where
         self.set_state(State::PllOn)?;
 
         // Load data into FIFO
+        // TODO: check length is valid
+
+        debug!("TX data: {:02x?}", data);
+
+        // First length
+        self.fifo_write(&[data.len() as u8])?;
+
+        // Then data
         self.fifo_write(data)?;
 
         // Setup IRQs
         let irqs = Irqs::TRX_END | Irqs::TRX_UR | Irqs::AMI;
         self.reg_write(Register::IrqMask, irqs.bits())?;
 
+        debug!("Entering TX state");
+
         // Set to TX state
         self.reg_write(Register::TrxCmd, TrxCmd::TxStart as u8)?;
 
-        todo!()
+        Ok(())
     }
 
     fn check_transmit(&mut self) -> Result<bool, Self::Error> {
-        // TODO: poll on IRQ pin if available
+        // Poll on IRQ pin if available
+        // TODO: feature gate this like other impls?
+        if !self.hal.irq()? {
+            return Ok(false)
+        }
 
         // Check for RX_START TRX_END RX_CRC_VALID AMI (if extended mode enabled) IRQs, BUSY_RX state
         let irqs = self.reg_read2::<Irqs>()?;
 
+        if !irqs.is_empty() {
+            debug!("TX IRQs: {:?}", irqs);
+        }
+
         // TRX_END signals receive completion
         if irqs.contains(Irqs::TRX_END) {
+            debug!("TX complete");
             Ok(true)
+
         } else {
             Ok(false)
         }
         
     }
-
-    
 }
 
 impl<B, SpiErr, PinErr, DelayErr> radio::Receive for At86Rf23x<B, SpiErr, PinErr, DelayErr>
@@ -421,6 +450,8 @@ where
         let irqs = Irqs::RX_START | Irqs::TRX_END | Irqs::TRX_UR | Irqs::AMI;
         self.reg_write(Register::IrqMask, irqs.bits())?;
 
+        debug!("Entering RX state");
+
         // Set to receive state
         self.reg_write(Register::TrxCmd, TrxCmd::RxOn as u8)?;
 
@@ -429,14 +460,25 @@ where
 
     /// Poll to check for receive completion
     fn check_receive(&mut self, _restart: bool) -> Result<bool, Self::Error> {
-        // TODO: poll on IRQ pin if available
+        // Poll on IRQ pin if available
+        // TODO: feature gate this like other impls?
+        if !self.hal.irq()? {
+            return Ok(false)
+        }
 
         // Check for RX_START TRX_END RX_CRC_VALID AMI (if extended mode enabled) IRQs, BUSY_RX state
         let irqs = self.reg_read2::<Irqs>()?;
 
+        if !irqs.is_empty() {
+            debug!("RX IRQs: {:?}", irqs);
+        }
+
         // TRX_END signals receive completion
         if irqs.contains(Irqs::TRX_END) {
+            debug!("RX complete");
             Ok(true)
+
+        // TODO: RX_CRC_VALID, AMI IRQs for extended mode
 
         // TRX_UR signifies FIFO underflow
         } else if irqs.contains(Irqs::TRX_UR) {
@@ -444,6 +486,7 @@ where
 
         // Receiving in progress
         } else if irqs.contains(Irqs::RX_START) {
+            debug!("RX start");
             Ok(true)
 
         // Nothing happening
