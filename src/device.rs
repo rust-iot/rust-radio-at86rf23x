@@ -51,7 +51,7 @@ pub enum Register {
 
 /// Register trait provides address for reading / writing as
 /// well as conversions to/from u8 values
-pub trait Reg: From<u8> + Into<u8> {
+pub trait Reg: From<u8> + Into<u8> + Copy {
     const ADDRESS: Register;
 }
 
@@ -112,7 +112,7 @@ impl Reg for TrxCtrl1 {
 #[cfg_attr(feature = "defmt", derive(defmt::Format))]
 pub struct PhyTxPwr {
     pub reserved: B4,
-    pub tx_pwr: B4,
+    pub tx_pwr: Power,
 }
 impl From<u8> for PhyTxPwr {
     fn from(v: u8) -> Self {
@@ -126,6 +126,28 @@ impl From<PhyTxPwr> for u8 {
 }
 impl Reg for PhyTxPwr {
     const ADDRESS: Register = Register::PhyTxPwr;
+}
+
+#[derive(Copy, Clone, PartialEq, Debug, BitfieldSpecifier)]
+#[cfg_attr(feature = "defmt", derive(defmt::Format))]
+#[bits = 4]
+pub enum Power {
+    P4dBm = 0x0,
+    P3_7dBm = 0x1,
+    P3_4dBm = 0x2,
+    P3dBm = 0x3,
+    P2_5dBm = 0x4,
+    P2dBm = 0x5,
+    P1dBm = 0x6,
+    P0dBm = 0x7,
+    Pn1dBm = 0x8,
+    Pn2dBm = 0x9,
+    Pn3dBm = 0xA,
+    Pn4dBm = 0xB,
+    Pn6dBm = 0xC,
+    Pn8dBm = 0xD,
+    Pn12dBm = 0xE,
+    Pn17dBm = 0xF,
 }
 
 #[bitfield]
@@ -178,7 +200,7 @@ impl Reg for PhyEdLevel {
 pub struct PhyCcCca {
     pub cca_request: bool,
     pub cca_mode: B2,
-    pub channel: B5,
+    pub channel: Channel,
 }
 
 impl From<u8> for PhyCcCca {
@@ -196,6 +218,49 @@ impl From<PhyCcCca> for u8 {
 impl Reg for PhyCcCca {
     const ADDRESS: Register = Register::PhyCcCca;
 }
+
+/// IEEE802.15.4 channel enumeration
+#[derive(Copy, Clone, PartialEq, Debug, BitfieldSpecifier)]
+#[cfg_attr(feature = "defmt", derive(defmt::Format))]
+#[bits = 5]
+pub enum Channel {
+    C2405MHz = 0x0B,
+    C2410MHz = 0x0C,
+    C2415MHz = 0x0D,
+    C2420MHz = 0x0E,
+    C2425MHz = 0x0F,
+    C2430MHz = 0x10,
+    C2435MHz = 0x11,
+    C2440MHz = 0x12,
+    C2445MHz = 0x13,
+    C2450MHz = 0x14,
+    C2455MHz = 0x15,
+    C2460MHz = 0x16,
+    C2465MHz = 0x17,
+    C2470MHz = 0x18,
+    C2475MHz = 0x19,
+    C2480MHz = 0x1A,
+}
+
+/// Constant channel list for access by index
+pub const CHANNELS: &[Channel] = &[
+    Channel::C2405MHz,
+    Channel::C2410MHz,
+    Channel::C2415MHz,
+    Channel::C2420MHz,
+    Channel::C2425MHz,
+    Channel::C2430MHz,
+    Channel::C2435MHz,
+    Channel::C2440MHz,
+    Channel::C2445MHz,
+    Channel::C2450MHz,
+    Channel::C2455MHz,
+    Channel::C2460MHz,
+    Channel::C2465MHz,
+    Channel::C2470MHz,
+    Channel::C2475MHz,
+    Channel::C2480MHz,
+];
 
 #[bitfield]
 #[derive(Copy, Clone, PartialEq, Debug)]
@@ -277,12 +342,22 @@ pub struct TrxCtrl2 {
     pub oqpsk_scram_en: bool,
     #[skip]
     pub __1: B2,
-    pub oqpsk_data_rate: B3,
+    pub oqpsk_data_rate: OqpskDataRate,
 }
 impl From<u8> for TrxCtrl2 {
     fn from(v: u8) -> Self {
         Self::from_bytes([v])
     }
+}
+
+#[derive(Copy, Clone, PartialEq, Debug, BitfieldSpecifier)]
+#[cfg_attr(feature = "defmt", derive(defmt::Format))]
+#[bits = 3]
+pub enum OqpskDataRate {
+    D250kbps = 0,
+    D500kbps = 1,
+    D1000kbps = 2,
+    D2000kbps = 3,
 }
 
 impl From<TrxCtrl2> for u8 {

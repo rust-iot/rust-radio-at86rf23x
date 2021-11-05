@@ -8,7 +8,7 @@ version = "0.1.0"
 edition = "2021"
 
 [features]
-util = ["structopt", "tracing", "tracing-subscriber", "humantime", "driver-pal/hal", "thiserror", "anyhow"]
+util = ["structopt", "tracing", "tracing-subscriber", "humantime", "driver-pal/hal", "thiserror", "anyhow", "radio/helpers" ]
 default = [ "util", "driver-pal/hal-cp2130", "driver-pal/hal-linux" ]
 
 [dependencies]
@@ -38,4 +38,4 @@ path = "src/util/main.rs"
 required-features = [ "util" ]
 
 [patch.crates-io]
-
+radio = { path = "../radio-hal" }

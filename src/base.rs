@@ -2,7 +2,7 @@ use core::fmt::Debug;
 
 use embedded_hal::{delay::blocking::*, digital::blocking::*, spi::blocking::*};
 
-use crate::{device::CommandFlags, device::Register, Error};
+use crate::{Error};
 
 /// IO container object to centralise IO traits and bounds
 pub struct Io<Spi, Cs, Rst, SlpTr, Irq, Delay> {
@@ -23,11 +23,11 @@ pub trait Base<SpiErr: Debug, PinErr: Debug, DelayErr: Debug> {
     fn spi_read(&mut self, cmd: u8, data: &mut [u8])
         -> Result<(), Error<SpiErr, PinErr, DelayErr>>;
 
-    /// Assert slp_tr
-    fn sleep(&mut self, sleep: bool) -> Result<(), Error<SpiErr, PinErr, DelayErr>>;
-
     /// Reset the device
     fn reset(&mut self) -> Result<(), Error<SpiErr, PinErr, DelayErr>>;
+
+    /// Control SLP_TR pin
+    fn slp_tr(&mut self, state: bool) -> Result<(), Error<SpiErr, PinErr, DelayErr>>;
 }
 
 /// Base trait implementation for Io objects
@@ -98,8 +98,8 @@ where
         r
     }
 
-    fn sleep(&mut self, sleep: bool) -> Result<(), Error<SpiErr, PinErr, DelayErr>> {
-        match sleep {
+    fn slp_tr(&mut self, state: bool) -> Result<(), Error<SpiErr, PinErr, DelayErr>> {
+        match state {
             true => self.slp_tr.set_high().map_err(Error::Pin),
             false => self.slp_tr.set_low().map_err(Error::Pin),
         }

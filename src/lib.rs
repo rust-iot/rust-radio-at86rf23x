@@ -1,8 +1,9 @@
 use core::fmt::Debug;
+use embedded_hal::delay::blocking::DelayUs;
 use log::{debug, warn};
 use std::marker::PhantomData;
 
-use radio::{Registers as _, State as _};
+use radio::{BasicInfo, Registers as _, State as _};
 
 pub mod base;
 pub mod device;
@@ -59,6 +60,16 @@ pub enum State {
     Busy,
 }
 
+impl radio::RadioState for State {
+    fn idle() -> Self {
+        State::Idle
+    }
+
+    fn sleep() -> Self {
+        State::Sleep
+    }
+}
+
 /// Part information
 #[derive(Debug, Clone, PartialEq)]
 pub struct Info {
@@ -83,7 +94,7 @@ where
         debug!("Connecting to device");
 
         // Deassert sleep
-        s.hal.sleep(false)?;
+        s.hal.slp_tr(false)?;
 
         // Perform reset
         s.hal.reset()?;
@@ -93,7 +104,7 @@ where
         // Write TRX_OFF to enter ready state
         s.reg_write(Register::TrxCmd, TrxCmd::TrxOff as u8)?;
 
-        // Wait for TRX_OFF
+        // TODO: Wait for TRX_OFF state (PLL lock)
 
         // Read info
         let i = s.info()?;
@@ -119,23 +130,23 @@ where
         Ok(i)
     }
 
-    /// Write to the device buffer
-    fn buff_write(&mut self, data: &[u8]) -> Result<(), Error<SpiErr, PinErr, DelayErr>> {
+    /// Write to the device FIFO
+    pub fn fifo_write(&mut self, data: &[u8]) -> Result<(), Error<SpiErr, PinErr, DelayErr>> {
         self.hal.spi_write(CommandFlags::BUFF_WR.bits(), data)
     }
 
-    /// Read from the device buffer
-    fn buff_read(&mut self, data: &mut [u8]) -> Result<(), Error<SpiErr, PinErr, DelayErr>> {
+    /// Read from the device FIFO
+    pub fn fifo_read(&mut self, data: &mut [u8]) -> Result<(), Error<SpiErr, PinErr, DelayErr>> {
         self.hal.spi_read(CommandFlags::BUFF_RD.bits(), data)
     }
 
     /// Write to the device SRAM
-    fn sram_write(&mut self, data: &[u8]) -> Result<(), Error<SpiErr, PinErr, DelayErr>> {
+    pub fn sram_write(&mut self, data: &[u8]) -> Result<(), Error<SpiErr, PinErr, DelayErr>> {
         self.hal.spi_write(CommandFlags::SRAM_WR.bits(), data)
     }
 
     /// Read from the device SRAM
-    fn sram_read(&mut self, data: &mut [u8]) -> Result<(), Error<SpiErr, PinErr, DelayErr>> {
+    pub fn sram_read(&mut self, data: &mut [u8]) -> Result<(), Error<SpiErr, PinErr, DelayErr>> {
         self.hal.spi_read(CommandFlags::SRAM_RD.bits(), data)
     }
 
@@ -150,6 +161,13 @@ where
     /// Write a device register
     fn reg_write2<R: Reg>(&mut self, v: R) -> Result<(), Error<SpiErr, PinErr, DelayErr>> {
         self.hal.spi_write(R::ADDRESS as u8 | CommandFlags::REG_WR.bits(), &[v.into()])
+    }
+
+    pub fn reg_update<R: Reg, F: Fn(&mut R)>(&mut self, f: F) -> Result<R, Error<SpiErr, PinErr, DelayErr>> {
+        let mut v = self.reg_read2::<R>()?;
+        f(&mut v);
+        self.reg_write2(v)?;
+        Ok(v)
     }
 }
 
@@ -253,6 +271,18 @@ where
     }
 }
 
+/// AT86RF23x Channel Object
+#[derive(Copy, Clone, PartialEq, Debug)]
+#[cfg_attr(feature = "defmt", derive(defmt::Format))]
+pub struct Ch {
+    /// Channel bitrate
+    pub bitrate: OqpskDataRate,
+    /// Channel frequency
+    pub channel: Channel,
+    /// Channel power
+    pub power: Power,
+}
+
 impl<B, SpiErr, PinErr, DelayErr> radio::Channel for At86Rf23x<B, SpiErr, PinErr, DelayErr>
 where
     B: Base<SpiErr, PinErr, DelayErr>,
@@ -260,15 +290,73 @@ where
     PinErr: Debug,
     DelayErr: Debug,
 {
-    type Channel = ();
+    type Channel = Ch;
 
     type Error = Error<SpiErr, PinErr, DelayErr>;
 
-    fn set_channel(&mut self, channel: &Self::Channel) -> Result<(), Self::Error> {
+    fn set_channel(&mut self, ch: &Self::Channel) -> Result<(), Self::Error> {
+        // Ensure we're idle
+        self.set_state(State::PllOn)?;
+
+        // TODO: support alternate channel configs?
+
+        // Load new channel
+        self.reg_update::<PhyCcCca, _>(|r| r.set_channel(ch.channel) )?;
+
+        // Load new bitrate
+        self.reg_update::<TrxCtrl2, _>(|r| r.set_oqpsk_data_rate(ch.bitrate) )?;
+
+        // Set power
+        self.reg_update::<PhyTxPwr, _>(|r| r.set_tx_pwr(ch.power) )?;
+
+        Ok(())
+    }
+}
+
+impl<B, SpiErr, PinErr, DelayErr> DelayUs<u32> for At86Rf23x<B, SpiErr, PinErr, DelayErr>
+where
+    B: Base<SpiErr, PinErr, DelayErr>,
+    SpiErr: Debug,
+    PinErr: Debug,
+    DelayErr: Debug,
+{
+    type Error = Error<SpiErr, PinErr, DelayErr>;
+
+    fn delay_us(&mut self, us: u32) -> Result<(), Self::Error> {
         todo!()
     }
 }
 
+impl<B, SpiErr, PinErr, DelayErr> radio::Power for At86Rf23x<B, SpiErr, PinErr, DelayErr>
+where
+    B: Base<SpiErr, PinErr, DelayErr>,
+    SpiErr: Debug,
+    PinErr: Debug,
+    DelayErr: Debug,
+{
+    type Error = Error<SpiErr, PinErr, DelayErr>;
+
+    fn set_power(&mut self, power: i8) -> Result<(), Self::Error> {
+        // TODO: convert power from int to nearest 
+        todo!()
+    }
+
+}
+
+impl<B, SpiErr, PinErr, DelayErr> radio::Rssi for At86Rf23x<B, SpiErr, PinErr, DelayErr>
+where
+    B: Base<SpiErr, PinErr, DelayErr>,
+    SpiErr: Debug,
+    PinErr: Debug,
+    DelayErr: Debug,
+{
+    type Error = Error<SpiErr, PinErr, DelayErr>;
+
+    fn poll_rssi(&mut self) -> Result<i16, Self::Error> {
+        todo!()
+    }
+
+}
 impl<B, SpiErr, PinErr, DelayErr> radio::Transmit for At86Rf23x<B, SpiErr, PinErr, DelayErr>
 where
     B: Base<SpiErr, PinErr, DelayErr>,
@@ -279,16 +367,35 @@ where
     type Error = Error<SpiErr, PinErr, DelayErr>;
 
     fn start_transmit(&mut self, data: &[u8]) -> Result<(), Self::Error> {
-        // TODO: Set to PLL_ON state
+        // Ensure we're idle and the PLL is on
+        self.set_state(State::PllOn)?;
 
-        // TODO: load data into FIFO
+        // Load data into FIFO
+        self.fifo_write(data)?;
+
+        // Setup IRQs
+        let irqs = Irqs::TRX_END | Irqs::TRX_UR | Irqs::AMI;
+        self.reg_write(Register::IrqMask, irqs.bits())?;
+
+        // Set to TX state
+        self.reg_write(Register::TrxCmd, TrxCmd::TxStart as u8)?;
 
         todo!()
     }
 
     fn check_transmit(&mut self) -> Result<bool, Self::Error> {
-        // TODO: check TRX_END for completion
-        todo!()
+        // TODO: poll on IRQ pin if available
+
+        // Check for RX_START TRX_END RX_CRC_VALID AMI (if extended mode enabled) IRQs, BUSY_RX state
+        let irqs = self.reg_read2::<Irqs>()?;
+
+        // TRX_END signals receive completion
+        if irqs.contains(Irqs::TRX_END) {
+            Ok(true)
+        } else {
+            Ok(false)
+        }
+        
     }
 
     
@@ -303,17 +410,27 @@ where
 {
     type Error = Error<SpiErr, PinErr, DelayErr>;
 
-    type Info = ();
+    type Info = BasicInfo;
 
     fn start_receive(&mut self) -> Result<(), Self::Error> {
-        // TODO: revert to PLL_ON if required (not already in PLL_ON or RX)
+        // Ensure we're idle and the PLL is on
+        // TODO: skip this if not required? (ie. already in PLL_ON or RX_ON)
+        self.set_state(State::PllOn)?;
 
-        // TODO: Set RX_ON
+        // Setup IRQs
+        let irqs = Irqs::RX_START | Irqs::TRX_END | Irqs::TRX_UR | Irqs::AMI;
+        self.reg_write(Register::IrqMask, irqs.bits())?;
 
-        todo!()
+        // Set to receive state
+        self.reg_write(Register::TrxCmd, TrxCmd::RxOn as u8)?;
+
+        Ok(())
     }
 
-    fn check_receive(&mut self, restart: bool) -> Result<bool, Self::Error> {
+    /// Poll to check for receive completion
+    fn check_receive(&mut self, _restart: bool) -> Result<bool, Self::Error> {
+        // TODO: poll on IRQ pin if available
+
         // Check for RX_START TRX_END RX_CRC_VALID AMI (if extended mode enabled) IRQs, BUSY_RX state
         let irqs = self.reg_read2::<Irqs>()?;
 
@@ -321,7 +438,7 @@ where
         if irqs.contains(Irqs::TRX_END) {
             Ok(true)
 
-        // TRX_UR signifies underflow
+        // TRX_UR signifies FIFO underflow
         } else if irqs.contains(Irqs::TRX_UR) {
             todo!()
 
@@ -335,11 +452,18 @@ where
         }
     }
 
-    fn get_received(&mut self, info: &mut Self::Info, buff: &mut [u8]) -> Result<usize, Self::Error> {
+    fn get_received(&mut self, buff: &mut [u8]) -> Result<(usize, Self::Info), Self::Error> {
         // TODO: read RSSI
 
-        // TODO: read data from FIFO
-        todo!()
+        // Read first byte PHR to discern length
+        self.fifo_read(&mut buff[..1])?;
+        let n = buff[0] as usize;
+
+        // Read following data
+        self.fifo_read(&mut buff[1..])?;
+
+        // Return packet length
+        Ok((n, BasicInfo::default()))
     }
 
     
