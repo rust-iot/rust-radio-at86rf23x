@@ -58,6 +58,7 @@ pub trait Reg: From<u8> + Into<u8> + Copy {
 #[bitfield]
 #[derive(Copy, Clone, PartialEq, Debug)]
 #[cfg_attr(feature = "defmt", derive(defmt::Format))]
+#[repr(u8)]
 pub struct TrxCtrl0 {
     pub tom_en: bool,
     pub reserved: bool,
@@ -65,25 +66,14 @@ pub struct TrxCtrl0 {
     pub pmu_if_inverse: bool,
     pub clkm_sha_sel: bool,
     pub clkm_ctrl: B3,
-}
-
-impl From<u8> for TrxCtrl0 {
-    fn from(v: u8) -> Self {
-        Self::from_bytes([v])
-    }
-}
-impl From<TrxCtrl0> for u8 {
-    fn from(v: TrxCtrl0) -> u8 {
-        v.into_bytes()[0]
-    }
-}
-impl Reg for TrxCtrl0 {
+}impl Reg for TrxCtrl0 {
     const ADDRESS: Register = Register::TrxCtrl0;
 }
 
 #[bitfield]
 #[derive(Copy, Clone, PartialEq, Debug)]
 #[cfg_attr(feature = "defmt", derive(defmt::Format))]
+#[repr(u8)]
 pub struct TrxCtrl1 {
     pub pa_ext_en: bool,
     pub irq_2_ext_en: bool,
@@ -93,16 +83,8 @@ pub struct TrxCtrl1 {
     pub irq_mask_mode: bool,
     pub irq_polarity: bool,
 }
-impl From<u8> for TrxCtrl1 {
-    fn from(v: u8) -> Self {
-        Self::from_bytes([v])
-    }
-}
-impl From<TrxCtrl1> for u8 {
-    fn from(v: TrxCtrl1) -> u8 {
-        v.into_bytes()[0]
-    }
-}
+
+
 impl Reg for TrxCtrl1 {
     const ADDRESS: Register = Register::TrxCtrl1;
 }
@@ -110,20 +92,13 @@ impl Reg for TrxCtrl1 {
 #[bitfield]
 #[derive(Copy, Clone, PartialEq, Debug)]
 #[cfg_attr(feature = "defmt", derive(defmt::Format))]
+#[repr(u8)]
 pub struct PhyTxPwr {
     pub reserved: B4,
     pub tx_pwr: Power,
 }
-impl From<u8> for PhyTxPwr {
-    fn from(v: u8) -> Self {
-        Self::from_bytes([v])
-    }
-}
-impl From<PhyTxPwr> for u8 {
-    fn from(v: PhyTxPwr) -> u8 {
-        v.into_bytes()[0]
-    }
-}
+
+
 impl Reg for PhyTxPwr {
     const ADDRESS: Register = Register::PhyTxPwr;
 }
@@ -153,21 +128,14 @@ pub enum Power {
 #[bitfield]
 #[derive(Copy, Clone, PartialEq, Debug)]
 #[cfg_attr(feature = "defmt", derive(defmt::Format))]
+#[repr(u8)]
 pub struct PhyRssi {
     pub rx_crc_valid: bool,
     pub rnd_value: B2,
     pub rssi: B5,
 }
-impl From<u8> for PhyRssi {
-    fn from(v: u8) -> Self {
-        Self::from_bytes([v])
-    }
-}
-impl From<PhyRssi> for u8 {
-    fn from(v: PhyRssi) -> u8 {
-        v.into_bytes()[0]
-    }
-}
+
+
 impl Reg for PhyRssi {
     const ADDRESS: Register = Register::PhyRssi;
 }
@@ -175,19 +143,9 @@ impl Reg for PhyRssi {
 #[bitfield]
 #[derive(Copy, Clone, PartialEq, Debug)]
 #[cfg_attr(feature = "defmt", derive(defmt::Format))]
+#[repr(u8)]
 pub struct PhyEdLevel {
     pub ed_level: u8,
-}
-impl From<u8> for PhyEdLevel {
-    fn from(v: u8) -> Self {
-        Self::from_bytes([v])
-    }
-}
-
-impl From<PhyEdLevel> for u8 {
-    fn from(v: PhyEdLevel) -> u8 {
-        v.into_bytes()[0]
-    }
 }
 
 impl Reg for PhyEdLevel {
@@ -197,22 +155,11 @@ impl Reg for PhyEdLevel {
 #[bitfield]
 #[derive(Copy, Clone, PartialEq, Debug)]
 #[cfg_attr(feature = "defmt", derive(defmt::Format))]
+#[repr(u8)]
 pub struct PhyCcCca {
     pub cca_request: bool,
     pub cca_mode: B2,
     pub channel: Channel,
-}
-
-impl From<u8> for PhyCcCca {
-    fn from(v: u8) -> Self {
-        Self::from_bytes([v])
-    }
-}
-
-impl From<PhyCcCca> for u8 {
-    fn from(v: PhyCcCca) -> u8 {
-        v.into_bytes()[0]
-    }
 }
 
 impl Reg for PhyCcCca {
@@ -265,22 +212,11 @@ pub const CHANNELS: &[Channel] = &[
 #[bitfield]
 #[derive(Copy, Clone, PartialEq, Debug)]
 #[cfg_attr(feature = "defmt", derive(defmt::Format))]
+#[repr(u8)]
 pub struct CcaThres {
     pub reserved: B4,
     pub cca_ed_thres: B4,
 }
-impl From<u8> for CcaThres {
-    fn from(v: u8) -> Self {
-        Self::from_bytes([v])
-    }
-}
-
-impl From<CcaThres> for u8 {
-    fn from(v: CcaThres) -> u8 {
-        v.into_bytes()[0]
-    }
-}
-
 impl Reg for CcaThres {
     const ADDRESS: Register = Register::CcaThres;
 }
@@ -288,24 +224,13 @@ impl Reg for CcaThres {
 #[bitfield]
 #[derive(Copy, Clone, PartialEq, Debug)]
 #[cfg_attr(feature = "defmt", derive(defmt::Format))]
+#[repr(u8)]
 pub struct RxCtrl {
     pub pel_shift_falue: B2,
     #[skip]
     pub __: B2,
     pub pdt_thresh: B4,
 }
-impl From<u8> for RxCtrl {
-    fn from(v: u8) -> Self {
-        Self::from_bytes([v])
-    }
-}
-
-impl From<RxCtrl> for u8 {
-    fn from(v: RxCtrl) -> u8 {
-        v.into_bytes()[0]
-    }
-}
-
 impl Reg for RxCtrl {
     const ADDRESS: Register = Register::RxCtrl;
 }
@@ -313,21 +238,10 @@ impl Reg for RxCtrl {
 #[bitfield]
 #[derive(Copy, Clone, PartialEq, Debug)]
 #[cfg_attr(feature = "defmt", derive(defmt::Format))]
+#[repr(u8)]
 pub struct SfdValue {
     pub sfd_value: u8,
 }
-impl From<u8> for SfdValue {
-    fn from(v: u8) -> Self {
-        Self::from_bytes([v])
-    }
-}
-
-impl From<SfdValue> for u8 {
-    fn from(v: SfdValue) -> u8 {
-        v.into_bytes()[0]
-    }
-}
-
 impl Reg for SfdValue {
     const ADDRESS: Register = Register::SfdValue;
 }
@@ -335,6 +249,7 @@ impl Reg for SfdValue {
 #[bitfield]
 #[derive(Copy, Clone, PartialEq, Debug)]
 #[cfg_attr(feature = "defmt", derive(defmt::Format))]
+#[repr(u8)]
 pub struct TrxCtrl2 {
     pub rx_safe_mode: bool,
     #[skip]
@@ -344,11 +259,7 @@ pub struct TrxCtrl2 {
     pub __1: B2,
     pub oqpsk_data_rate: OqpskDataRate,
 }
-impl From<u8> for TrxCtrl2 {
-    fn from(v: u8) -> Self {
-        Self::from_bytes([v])
-    }
-}
+
 
 #[derive(Copy, Clone, PartialEq, Debug, BitfieldSpecifier)]
 #[cfg_attr(feature = "defmt", derive(defmt::Format))]
@@ -358,21 +269,14 @@ pub enum OqpskDataRate {
     D500kbps = 1,
     D1000kbps = 2,
     D2000kbps = 3,
-}
-
-impl From<TrxCtrl2> for u8 {
-    fn from(v: TrxCtrl2) -> u8 {
-        v.into_bytes()[0]
-    }
-}
-
-impl Reg for TrxCtrl2 {
+}impl Reg for TrxCtrl2 {
     const ADDRESS: Register = Register::TrxCtrl2;
 }
 
 #[bitfield]
 #[derive(Copy, Clone, PartialEq, Debug)]
 #[cfg_attr(feature = "defmt", derive(defmt::Format))]
+#[repr(u8)]
 pub struct AntDiv {
     pub ant_sel: B3,
     #[skip]
@@ -381,18 +285,6 @@ pub struct AntDiv {
     pub ant_ext_sw_en: bool,
     pub ant_ctrl: B2,
 }
-impl From<u8> for AntDiv {
-    fn from(v: u8) -> Self {
-        Self::from_bytes([v])
-    }
-}
-
-impl From<AntDiv> for u8 {
-    fn from(v: AntDiv) -> u8 {
-        v.into_bytes()[0]
-    }
-}
-
 impl Reg for AntDiv {
     const ADDRESS: Register = Register::AntDiv;
 }
@@ -400,27 +292,17 @@ impl Reg for AntDiv {
 #[bitfield]
 #[derive(Copy, Clone, PartialEq, Debug)]
 #[cfg_attr(feature = "defmt", derive(defmt::Format))]
+#[repr(u8)]
 pub struct IrqMask {
     pub irq_mask: u8,
 }
-impl From<u8> for IrqMask {
-    fn from(v: u8) -> Self {
-        Self::from_bytes([v])
-    }
-}
-
-impl From<IrqMask> for u8 {
-    fn from(v: IrqMask) -> u8 {
-        v.into_bytes()[0]
-    }
-}
-
 impl Reg for IrqMask {
     const ADDRESS: Register = Register::IrqMask;
 }
 #[bitfield]
 #[derive(Copy, Clone, PartialEq, Debug)]
 #[cfg_attr(feature = "defmt", derive(defmt::Format))]
+#[repr(u8)]
 pub struct IrqStatus {
     /// Supply voltage below programmed threshold
     pub batt_low: bool,
@@ -439,18 +321,6 @@ pub struct IrqStatus {
     /// PLL lock
     pub pll_lock: bool,
 }
-impl From<u8> for IrqStatus {
-    fn from(v: u8) -> Self {
-        Self::from_bytes([v])
-    }
-}
-
-impl From<IrqStatus> for u8 {
-    fn from(v: IrqStatus) -> u8 {
-        v.into_bytes()[0]
-    }
-}
-
 impl Reg for IrqStatus {
     const ADDRESS: Register = Register::IrqStatus;
 }
@@ -458,6 +328,7 @@ impl Reg for IrqStatus {
 #[bitfield]
 #[derive(Copy, Clone, PartialEq, Debug)]
 #[cfg_attr(feature = "defmt", derive(defmt::Format))]
+#[repr(u8)]
 pub struct VregCtrl {
     pub avreg_ext: bool,
     pub avdd_ok: bool,
@@ -468,18 +339,6 @@ pub struct VregCtrl {
     #[skip]
     pub __2: B2,
 }
-impl From<u8> for VregCtrl {
-    fn from(v: u8) -> Self {
-        Self::from_bytes([v])
-    }
-}
-
-impl From<VregCtrl> for u8 {
-    fn from(v: VregCtrl) -> u8 {
-        v.into_bytes()[0]
-    }
-}
-
 impl Reg for VregCtrl {
     const ADDRESS: Register = Register::VregCtrl;
 }
@@ -487,6 +346,7 @@ impl Reg for VregCtrl {
 #[bitfield]
 #[derive(Copy, Clone, PartialEq, Debug)]
 #[cfg_attr(feature = "defmt", derive(defmt::Format))]
+#[repr(u8)]
 pub struct Batmon {
     #[skip]
     pub __: B2,
@@ -494,18 +354,6 @@ pub struct Batmon {
     pub batmon_hr: bool,
     pub batmon_vth: B4,
 }
-impl From<u8> for Batmon {
-    fn from(v: u8) -> Self {
-        Self::from_bytes([v])
-    }
-}
-
-impl From<Batmon> for u8 {
-    fn from(v: Batmon) -> u8 {
-        v.into_bytes()[0]
-    }
-}
-
 impl Reg for Batmon {
     const ADDRESS: Register = Register::Batmon;
 }
@@ -513,22 +361,11 @@ impl Reg for Batmon {
 #[bitfield]
 #[derive(Copy, Clone, PartialEq, Debug)]
 #[cfg_attr(feature = "defmt", derive(defmt::Format))]
+#[repr(u8)]
 pub struct XoscCtrl {
     pub xtal_mode: B4,
     pub xtal_trim: B4,
 }
-impl From<u8> for XoscCtrl {
-    fn from(v: u8) -> Self {
-        Self::from_bytes([v])
-    }
-}
-
-impl From<XoscCtrl> for u8 {
-    fn from(v: XoscCtrl) -> u8 {
-        v.into_bytes()[0]
-    }
-}
-
 impl Reg for XoscCtrl {
     const ADDRESS: Register = Register::XoscCtrl;
 }
@@ -536,21 +373,10 @@ impl Reg for XoscCtrl {
 #[bitfield]
 #[derive(Copy, Clone, PartialEq, Debug)]
 #[cfg_attr(feature = "defmt", derive(defmt::Format))]
+#[repr(u8)]
 pub struct CcCtrl0 {
     pub cc_number: u8,
 }
-impl From<u8> for CcCtrl0 {
-    fn from(v: u8) -> Self {
-        Self::from_bytes([v])
-    }
-}
-
-impl From<CcCtrl0> for u8 {
-    fn from(v: CcCtrl0) -> u8 {
-        v.into_bytes()[0]
-    }
-}
-
 impl Reg for CcCtrl0 {
     const ADDRESS: Register = Register::CcCtrl0;
 }
@@ -558,23 +384,12 @@ impl Reg for CcCtrl0 {
 #[bitfield]
 #[derive(Copy, Clone, PartialEq, Debug)]
 #[cfg_attr(feature = "defmt", derive(defmt::Format))]
+#[repr(u8)]
 pub struct CcCtrl1 {
     #[skip]
     pub __: B4,
     pub cc_band: B4,
 }
-impl From<u8> for CcCtrl1 {
-    fn from(v: u8) -> Self {
-        Self::from_bytes([v])
-    }
-}
-
-impl From<CcCtrl1> for u8 {
-    fn from(v: CcCtrl1) -> u8 {
-        v.into_bytes()[0]
-    }
-}
-
 impl Reg for CcCtrl1 {
     const ADDRESS: Register = Register::CcCtrl1;
 }
@@ -582,24 +397,13 @@ impl Reg for CcCtrl1 {
 #[bitfield]
 #[derive(Copy, Clone, PartialEq, Debug)]
 #[cfg_attr(feature = "defmt", derive(defmt::Format))]
+#[repr(u8)]
 pub struct RxSyn {
     pub rx_pdt_dis: bool,
     #[skip]
     pub __: B3,
     pub rx_pdt_level: B4,
 }
-impl From<u8> for RxSyn {
-    fn from(v: u8) -> Self {
-        Self::from_bytes([v])
-    }
-}
-
-impl From<RxSyn> for u8 {
-    fn from(v: RxSyn) -> u8 {
-        v.into_bytes()[0]
-    }
-}
-
 impl Reg for RxSyn {
     const ADDRESS: Register = Register::RxSyn;
 }
@@ -607,6 +411,7 @@ impl Reg for RxSyn {
 #[bitfield]
 #[derive(Copy, Clone, PartialEq, Debug)]
 #[cfg_attr(feature = "defmt", derive(defmt::Format))]
+#[repr(u8)]
 pub struct TrxRpc {
     pub rx_rpc_ctrl: B2,
     pub rx_rpc_en: bool,
@@ -616,18 +421,6 @@ pub struct TrxRpc {
     pub ipan_rpc_en: bool,
     pub __: bool,
 }
-impl From<u8> for TrxRpc {
-    fn from(v: u8) -> Self {
-        Self::from_bytes([v])
-    }
-}
-
-impl From<TrxRpc> for u8 {
-    fn from(v: TrxRpc) -> u8 {
-        v.into_bytes()[0]
-    }
-}
-
 impl Reg for TrxRpc {
     const ADDRESS: Register = Register::TrxRpc;
 }
@@ -635,6 +428,7 @@ impl Reg for TrxRpc {
 #[bitfield]
 #[derive(Copy, Clone, PartialEq, Debug)]
 #[cfg_attr(feature = "defmt", derive(defmt::Format))]
+#[repr(u8)]
 pub struct XahCtrl1 {
     pub aret_tx_ts_en: bool,
     #[skip]
@@ -647,18 +441,6 @@ pub struct XahCtrl1 {
     pub aack_prom_mode: bool,
     pub aack_spc_en: bool,
 }
-impl From<u8> for XahCtrl1 {
-    fn from(v: u8) -> Self {
-        Self::from_bytes([v])
-    }
-}
-
-impl From<XahCtrl1> for u8 {
-    fn from(v: XahCtrl1) -> u8 {
-        v.into_bytes()[0]
-    }
-}
-
 impl Reg for XahCtrl1 {
     const ADDRESS: Register = Register::XahCtrl1;
 }
@@ -666,22 +448,15 @@ impl Reg for XahCtrl1 {
 #[bitfield]
 #[derive(Copy, Clone, PartialEq, Debug)]
 #[cfg_attr(feature = "defmt", derive(defmt::Format))]
+#[repr(u8)]
 pub struct FtnCtrl {
     pub ftn_start: bool,
     #[skip]
     __: bool,
     pub ftnv: B6,
 }
-impl From<u8> for FtnCtrl {
-    fn from(v: u8) -> Self {
-        Self::from_bytes([v])
-    }
-}
-impl From<FtnCtrl> for u8 {
-    fn from(v: FtnCtrl) -> u8 {
-        v.into_bytes()[0]
-    }
-}
+
+
 impl Reg for FtnCtrl {
     const ADDRESS: Register = Register::FtnCtrl;
 }
@@ -689,22 +464,15 @@ impl Reg for FtnCtrl {
 #[bitfield]
 #[derive(Copy, Clone, PartialEq, Debug)]
 #[cfg_attr(feature = "defmt", derive(defmt::Format))]
+#[repr(u8)]
 pub struct XahCtrl2 {
     pub aret_frame_retries: B4,
     pub aret_csma_retries: B3,
     #[skip]
     pub __: bool,
 }
-impl From<u8> for XahCtrl2 {
-    fn from(v: u8) -> Self {
-        Self::from_bytes([v])
-    }
-}
-impl From<XahCtrl2> for u8 {
-    fn from(v: XahCtrl2) -> u8 {
-        v.into_bytes()[0]
-    }
-}
+
+
 impl Reg for XahCtrl2 {
     const ADDRESS: Register = Register::XahCtrl2;
 }
@@ -712,22 +480,15 @@ impl Reg for XahCtrl2 {
 #[bitfield]
 #[derive(Copy, Clone, PartialEq, Debug)]
 #[cfg_attr(feature = "defmt", derive(defmt::Format))]
+#[repr(u8)]
 pub struct PllCf {
     pub pll_cf_start: bool,
     #[skip]
     __: B3,
     pub pll_cf: B4,
 }
-impl From<u8> for PllCf {
-    fn from(v: u8) -> Self {
-        Self::from_bytes([v])
-    }
-}
-impl From<PllCf> for u8 {
-    fn from(v: PllCf) -> u8 {
-        v.into_bytes()[0]
-    }
-}
+
+
 impl Reg for PllCf {
     const ADDRESS: Register = Register::PllCf;
 }
@@ -735,20 +496,13 @@ impl Reg for PllCf {
 #[bitfield]
 #[derive(Copy, Clone, PartialEq, Debug)]
 #[cfg_attr(feature = "defmt", derive(defmt::Format))]
+#[repr(u8)]
 pub struct PllDcu {
     pub pll_dcu_start: bool,
     pub reserved: B7,
 }
-impl From<u8> for PllDcu {
-    fn from(v: u8) -> Self {
-        Self::from_bytes([v])
-    }
-}
-impl From<PllDcu> for u8 {
-    fn from(v: PllDcu) -> u8 {
-        v.into_bytes()[0]
-    }
-}
+
+
 impl Reg for PllDcu {
     const ADDRESS: Register = Register::PllDcu;
 }
