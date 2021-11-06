@@ -1,5 +1,6 @@
 use core::fmt::Debug;
 
+use log::trace;
 use embedded_hal::{delay::blocking::*, digital::blocking::*, spi::blocking::*};
 
 use crate::{Error};
@@ -17,10 +18,10 @@ pub struct Io<Spi, Cs, Rst, SlpTr, Irq, Delay> {
 /// Base trait provides methods for underlying device interaction
 pub trait Base<SpiErr: Debug, PinErr: Debug, DelayErr: Debug> {
     /// SPI write command
-    fn spi_write(&mut self, cmd: u8, data: &[u8]) -> Result<(), Error<SpiErr, PinErr, DelayErr>>;
+    fn spi_write(&mut self, cmd: &[u8], data: &[u8]) -> Result<(), Error<SpiErr, PinErr, DelayErr>>;
 
     /// SPI read command
-    fn spi_read(&mut self, cmd: u8, data: &mut [u8])
+    fn spi_read(&mut self, cmd: &[u8], data: &mut [u8])
         -> Result<(), Error<SpiErr, PinErr, DelayErr>>;
 
     /// Reset the device
@@ -31,6 +32,7 @@ pub trait Base<SpiErr: Debug, PinErr: Debug, DelayErr: Debug> {
 
     /// Read IRQ pin state
     fn irq(&mut self) -> Result<bool, Error<SpiErr, PinErr, DelayErr>>;
+
     fn delay_ms(&mut self, ms: u32) -> Result<(), Error<SpiErr, PinErr, DelayErr>>;
 
     fn delay_us(&mut self, us: u32) -> Result<(), Error<SpiErr, PinErr, DelayErr>>;
@@ -50,9 +52,10 @@ where
     PinErr: Debug,
     DelayErr: Debug,
 {
-    fn spi_write(&mut self, cmd: u8, data: &[u8]) -> Result<(), Error<SpiErr, PinErr, DelayErr>> {
-        let cmd = [cmd];
+    fn spi_write(&mut self, cmd: &[u8], data: &[u8]) -> Result<(), Error<SpiErr, PinErr, DelayErr>> {
         let mut t = [Operation::Write(&cmd), Operation::Write(data)];
+
+        trace!("SPI write: {:02x?}", t);
 
         self.cs.set_low().map_err(Error::Pin)?;
 
@@ -65,15 +68,16 @@ where
 
     fn spi_read(
         &mut self,
-        cmd: u8,
+        cmd: &[u8],
         data: &mut [u8],
     ) -> Result<(), Error<SpiErr, PinErr, DelayErr>> {
-        let cmd = [cmd];
         let mut t = [Operation::Write(&cmd), Operation::Transfer(data)];
 
         self.cs.set_low().map_err(Error::Pin)?;
 
         let r = self.spi.exec(&mut t).map_err(Error::Spi);
+
+        trace!("SPI read: {:02x?}", t);
 
         self.cs.set_high().map_err(Error::Pin)?;
 
@@ -114,6 +118,7 @@ where
     fn irq(&mut self) -> Result<bool, Error<SpiErr, PinErr, DelayErr>> {
         self.irq.is_high().map_err(Error::Pin)
     }
+
     fn delay_ms(&mut self, ms: u32) -> Result<(), Error<SpiErr, PinErr, DelayErr>> {
         self.delay.delay_ms(ms).map_err(Error::Delay)
     }

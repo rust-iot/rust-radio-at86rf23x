@@ -2,21 +2,6 @@ use num_enum::TryFromPrimitive;
 
 use modular_bitfield::prelude::*;
 
-/// AT86RF23x device configuration
-#[derive(Clone, PartialEq, Debug)]
-#[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
-#[cfg_attr(feature = "defmt", derive(defmt::Format))]
-pub struct Config {
-    pub xtal_mode: XtalMode,
-}
-
-impl Default for Config {
-    fn default() -> Self {
-        Self { 
-            xtal_mode: XtalMode::InternalOscillator
-        }
-    }
-}
 
 #[derive(Copy, Clone, PartialEq, Debug, TryFromPrimitive)]
 #[repr(u8)]
@@ -275,7 +260,9 @@ pub struct TrxCtrl2 {
     pub __1: B2,
     pub oqpsk_data_rate: OqpskDataRate,
 }
-
+impl Reg for TrxCtrl2 {
+    const ADDRESS: Register = Register::TrxCtrl2;
+}
 
 #[derive(Copy, Clone, PartialEq, Debug, BitfieldSpecifier)]
 #[cfg_attr(feature = "defmt", derive(defmt::Format))]
@@ -285,9 +272,24 @@ pub enum OqpskDataRate {
     D500kbps = 1,
     D1000kbps = 2,
     D2000kbps = 3,
-}impl Reg for TrxCtrl2 {
-    const ADDRESS: Register = Register::TrxCtrl2;
 }
+
+impl TryFrom<u32> for OqpskDataRate {
+    type Error = ();
+
+    /// Attempt to convert from data rate in kbps
+    fn try_from(kbps: u32) -> Result<Self, Self::Error> {
+        match kbps {
+            250 => Ok(Self::D250kbps),
+            500 => Ok(Self::D500kbps),
+            1000 => Ok(Self::D1000kbps),
+            2000 => Ok(Self::D2000kbps),
+            _ => Err(())
+        }
+    }
+}
+
+
 
 #[bitfield]
 #[derive(Copy, Clone, PartialEq, Debug)]
@@ -443,6 +445,7 @@ pub struct TrxRpc {
     pub pll_rpc_en: bool,
     pub xah_tx_rpc_en: bool,
     pub ipan_rpc_en: bool,
+    #[skip]
     pub __: bool,
 }
 impl Reg for TrxRpc {
@@ -521,11 +524,31 @@ impl Reg for PllCf {
 #[derive(Copy, Clone, PartialEq, Debug)]
 #[cfg_attr(feature = "defmt", derive(defmt::Format))]
 #[repr(u8)]
+pub struct PartNum {
+    pub part: Part,
+}
+
+impl Reg for PartNum {
+    const ADDRESS: Register = Register::PartNum;
+}
+
+#[derive(Copy, Clone, PartialEq, Debug, BitfieldSpecifier)]
+#[cfg_attr(feature = "defmt", derive(defmt::Format))]
+#[bits = 8]
+pub enum Part {
+    None      = 0x00,
+    At86RF231 = 0x03,
+    At86Rf233 = 0x0b,
+}
+
+#[bitfield]
+#[derive(Copy, Clone, PartialEq, Debug)]
+#[cfg_attr(feature = "defmt", derive(defmt::Format))]
+#[repr(u8)]
 pub struct PllDcu {
     pub pll_dcu_start: bool,
     pub reserved: B7,
 }
-
 
 impl Reg for PllDcu {
     const ADDRESS: Register = Register::PllDcu;

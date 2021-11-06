@@ -3,7 +3,7 @@ use embedded_hal::delay::blocking::DelayUs;
 use log::{debug, warn};
 use std::marker::PhantomData;
 
-use radio::{BasicInfo, Registers as _, State as _};
+use radio::{BasicInfo, Channel as _, Interrupts, Registers as _, State as _};
 
 pub mod base;
 pub mod device;
@@ -12,11 +12,37 @@ pub mod prelude;
 use base::Base;
 use device::*;
 
+pub use device::CHANNELS;
+
 /// AT86RF23x driver object
 pub struct At86Rf23x<B, SpiErr: Debug, PinErr: Debug, DelayErr: Debug> {
     hal: B,
-
+    auto_crc: bool,
     _err: PhantomData<Error<SpiErr, PinErr, DelayErr>>,
+}
+
+
+/// AT86RF23x device configuration
+#[derive(Clone, PartialEq, Debug)]
+#[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
+#[cfg_attr(feature = "defmt", derive(defmt::Format))]
+pub struct Config {
+    pub xtal_mode: XtalMode,
+    pub channel: Ch,
+    pub auto_crc: bool,
+}
+
+impl Default for Config {
+    fn default() -> Self {
+        Self { 
+            xtal_mode: XtalMode::InternalOscillator,
+            channel: Ch { 
+                bitrate: OqpskDataRate::D250kbps, 
+                channel: CHANNELS[0], 
+            },
+            auto_crc: true,
+        }
+    }
 }
 
 /// Error type for AT86RF23x
@@ -73,7 +99,7 @@ impl radio::RadioState for State {
 /// Part information
 #[derive(Debug, Clone, PartialEq)]
 pub struct Info {
-    pub part: u8,
+    pub part: Part,
     pub ver: u8,
     pub mfr: u16,
 }
@@ -85,9 +111,10 @@ where
     PinErr: Debug,
     DelayErr: Debug,
 {
-    pub fn new(hal: B) -> Result<Self, Error<SpiErr, PinErr, DelayErr>> {
+    pub fn new(hal: B, config: Config) -> Result<Self, Error<SpiErr, PinErr, DelayErr>> {
         let mut s = Self {
             hal,
+            auto_crc: config.auto_crc,
             _err: PhantomData,
         };
 
@@ -108,10 +135,30 @@ where
 
         // Read info
         let i = s.info()?;
-        if i.part == 0 && i.ver == 0 && i.mfr == 0 {
+        if i.part == Part::None && i.ver == 0 && i.mfr == 0 {
             warn!("Init failed, communication error");
             return Err(Error::NoResponse);
         }
+
+        // TODO: check voltages are okay
+
+        // TODO: configure xtal
+
+        // Set channel
+        s.set_channel(&config.channel)?;
+
+        // TODO: set CCA mode
+
+        // Enable promiscuous mode
+        s.reg_update::<XahCtrl1, _>(|r| r.set_aack_prom_mode(true) )?;
+
+        if s.auto_crc {
+            // Enable auto-crc in TX
+            s.reg_update::<TrxCtrl1, _>(|r| r.set_tx_auto_crc_on(true) )?;
+        }
+
+        // Enable dynamic frame buffer protection
+        s.reg_update::<TrxCtrl2, _>(|r| r.set_rx_safe_mode(true) )?;
 
         debug!("Device info: {:02x?}", i);
 
@@ -120,7 +167,7 @@ where
 
     pub fn info(&mut self) -> Result<Info, Error<SpiErr, PinErr, DelayErr>> {
         let i = Info {
-            part: self.reg_read(Register::PartNum)?,
+            part: self.reg_read2::<PartNum>().map(|p| p.part() )?,
             ver: self.reg_read(Register::VersionNum)?,
             mfr: u16::from_le_bytes([
                 self.reg_read(Register::ManId0)?,
@@ -132,35 +179,35 @@ where
 
     /// Write to the device FIFO
     pub fn fifo_write(&mut self, data: &[u8]) -> Result<(), Error<SpiErr, PinErr, DelayErr>> {
-        self.hal.spi_write(CommandFlags::BUFF_WR.bits(), data)
+        self.hal.spi_write(&[CommandFlags::BUFF_WR.bits()], data)
     }
 
     /// Read from the device FIFO
     pub fn fifo_read(&mut self, data: &mut [u8]) -> Result<(), Error<SpiErr, PinErr, DelayErr>> {
-        self.hal.spi_read(CommandFlags::BUFF_RD.bits(), data)
+        self.hal.spi_read(&[CommandFlags::BUFF_RD.bits()], data)
     }
 
     /// Write to the device SRAM
-    pub fn sram_write(&mut self, data: &[u8]) -> Result<(), Error<SpiErr, PinErr, DelayErr>> {
-        self.hal.spi_write(CommandFlags::SRAM_WR.bits(), data)
+    pub fn sram_write(&mut self, offset: u8, data: &[u8]) -> Result<(), Error<SpiErr, PinErr, DelayErr>> {
+        self.hal.spi_write(&[CommandFlags::SRAM_WR.bits(), offset], data)
     }
 
     /// Read from the device SRAM
-    pub fn sram_read(&mut self, data: &mut [u8]) -> Result<(), Error<SpiErr, PinErr, DelayErr>> {
-        self.hal.spi_read(CommandFlags::SRAM_RD.bits(), data)
+    pub fn sram_read(&mut self, offset: u8, data: &mut [u8]) -> Result<(), Error<SpiErr, PinErr, DelayErr>> {
+        self.hal.spi_read(&[CommandFlags::SRAM_RD.bits(), offset], data)
     }
 
     /// Read a device register
     fn reg_read2<R: Reg>(&mut self) -> Result<R, Error<SpiErr, PinErr, DelayErr>> {
         let mut d = [0u8];
         self.hal
-            .spi_read(R::ADDRESS as u8 | CommandFlags::REG_RD.bits(), &mut d)?;
+            .spi_read(&[R::ADDRESS as u8 | CommandFlags::REG_RD.bits()], &mut d)?;
         Ok(R::from(d[0]))
     }
 
     /// Write a device register
     fn reg_write2<R: Reg>(&mut self, v: R) -> Result<(), Error<SpiErr, PinErr, DelayErr>> {
-        self.hal.spi_write(R::ADDRESS as u8 | CommandFlags::REG_WR.bits(), &[v.into()])
+        self.hal.spi_write(&[R::ADDRESS as u8 | CommandFlags::REG_WR.bits()], &[v.into()])
     }
 
     pub fn reg_update<R: Reg, F: Fn(&mut R)>(&mut self, f: F) -> Result<R, Error<SpiErr, PinErr, DelayErr>> {
@@ -184,14 +231,14 @@ where
     /// Write a value to a device register
     fn reg_write(&mut self, reg: Register, v: u8) -> Result<(), Self::Error> {
         self.hal
-            .spi_write(reg as u8 | CommandFlags::REG_WR.bits(), &[v])
+            .spi_write(&[reg as u8 | CommandFlags::REG_WR.bits()], &[v])
     }
 
     /// Read a value from a device register
     fn reg_read(&mut self, reg: Register) -> Result<u8, Self::Error> {
         let mut d = [0u8];
         self.hal
-            .spi_read(reg as u8 | CommandFlags::REG_RD.bits(), &mut d)?;
+            .spi_read(&[reg as u8 | CommandFlags::REG_RD.bits()], &mut d)?;
         Ok(d[0])
     }
 }
@@ -386,15 +433,28 @@ where
 
         debug!("TX data: {:02x?}", data);
 
+        // Calculate length
+        let mut len = data.len() as u8;
+        if self.auto_crc {
+            len += 2;
+        }
+
         // First length
-        self.fifo_write(&[data.len() as u8])?;
+        self.sram_write(0, &[len])?;
 
         // Then data
-        self.fifo_write(data)?;
+        self.sram_write(1, data)?;
+
+        // Add CRC padding if required
+        if self.auto_crc {
+            let crc = [0xFFu8; 2];
+            self.sram_write(1 + data.len() as u8, &crc)?;
+        }
 
         // Setup IRQs
         let irqs = Irqs::TRX_END | Irqs::TRX_UR | Irqs::AMI;
         self.reg_write(Register::IrqMask, irqs.bits())?;
+        let _ = self.get_interrupts(true)?;
 
         debug!("Entering TX state");
 
@@ -449,6 +509,7 @@ where
         // Setup IRQs
         let irqs = Irqs::RX_START | Irqs::TRX_END | Irqs::TRX_UR | Irqs::AMI;
         self.reg_write(Register::IrqMask, irqs.bits())?;
+        let _ = self.get_interrupts(true)?;
 
         debug!("Entering RX state");
 
@@ -495,18 +556,29 @@ where
         }
     }
 
-    fn get_received(&mut self, buff: &mut [u8]) -> Result<(usize, Self::Info), Self::Error> {
-        // TODO: read RSSI
+    fn get_received(&mut self, buff: &mut [u8]) -> Result<(usize, Self::Info), Self::Error> {      
+        // Read RSSI (using energy detect per datasheet recommendation)
+        let ed = self.reg_read2::<PhyEdLevel>()?;
+        let info = if ed.ed_level() < 0x54 {
+            BasicInfo::new(-94 + ed.ed_level() as i16, u16::MIN)
+        } else {
+            BasicInfo::default()
+        };
+
+        // TODO: apparently different 231 and 233 devices operate differently here...
+        // https://github.com/msolters/arduino-at86rf233/blob/master/at86rf2xx.cpp#L253
 
         // Read first byte PHR to discern length
-        self.fifo_read(&mut buff[..1])?;
+        self.sram_read(0, &mut buff[..1])?;
         let n = buff[0] as usize;
 
         // Read following data
-        self.fifo_read(&mut buff[1..])?;
+        self.sram_read(1, &mut buff[1..][..n])?;
+
+        // TODO: if we have auto CRC enabled should we check here / remove from returned array?
 
         // Return packet length
-        Ok((n, BasicInfo::default()))
+        Ok((n, info))
     }
 
     

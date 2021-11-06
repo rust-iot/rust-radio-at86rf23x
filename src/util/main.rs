@@ -77,14 +77,18 @@ fn main() -> Result<(), anyhow::Error> {
         delay: HalDelay {},
     };
 
+    // Build configuration
+    let config = Config::default();
+
     // Instantiate radio
-    let mut radio = match At86Rf23x::new(io) {
+    let mut radio = match At86Rf23x::new(io, config) {
         Ok(r) => r,
         Err(e) => {
             return Err(anyhow::anyhow!("Failed to initialise radio: {:?}", e));
         }
     };
 
+    // Execute command
     if let Err(e) = handle_command(&mut radio, &opts.command) {
         return Err(anyhow::anyhow!("Command failed: {:?}", e));
     }
