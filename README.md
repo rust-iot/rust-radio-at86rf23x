@@ -8,7 +8,6 @@ WIP. Only tested on AT86RF233. Basic TX and RX working, pan/addr filtering and e
 
 [![GitHub tag](https://img.shields.io/github/tag/rust-iot/rust-radio-at86rf23x.svg)](https://github.com/rust-iot/rust-radio-at86rf23x)
 ![Build Status](https://github.com/rust-iot/rust-radio-at86rf23x/workflows/Rust/badge.svg)
-[![Integration Test Status](https://badge.buildkite.com/a8caa71f875a6ec62091a5dda4dbf7dc0e35eb4e02c8d0933b.svg)](https://buildkite.com/rust-iot/rust-radio-at86rf23x)
 [![Crates.io](https://img.shields.io/crates/v/radio-at86rf23x.svg)](https://crates.io/crates/radio-at86rf23x)
 [![Docs.rs](https://docs.rs/radio-at86rf23x/badge.svg)](https://docs.rs/radio-at86rf23x)
 [![Snap Status](https://build.snapcraft.io/badge/rust-iot/rust-radio-at86rf23x.svg)](https://build.snapcraft.io/user/rust-iot/rust-radio-at86rf23x)
