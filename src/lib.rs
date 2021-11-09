@@ -70,6 +70,10 @@ pub enum Error<SpiErr: Debug, PinErr: Debug, DelayErr: Debug> {
     #[error("No response from device")]
     /// No response from device
     NoResponse,
+
+    #[error("Unexpected register value (reg: 0x{0:02x} val: 0x:{1:02x}")]
+    /// No response from device
+    UnexpectedValue(u8, u8),
 }
 
 #[derive(Copy, Clone, PartialEq, Debug, strum_macros::Display)]
@@ -129,7 +133,7 @@ where
         // TODO: enable AWAKE_END IRQ to detect move to TRX_OFF
 
         // Write TRX_OFF to enter ready state
-        s.reg_write(Register::TrxCmd, TrxCmd::TrxOff as u8)?;
+        s.write_register::<TrxCmd>(TrxCmd::TrxOff)?;
 
         // TODO: Wait for TRX_OFF state (PLL lock)
 
@@ -150,15 +154,15 @@ where
         // TODO: set CCA mode
 
         // Enable promiscuous mode
-        s.reg_update::<XahCtrl1, _>(|r| r.set_aack_prom_mode(true) )?;
+        s.update_register::<XahCtrl1, _>(|r| r.with_aack_prom_mode(true) )?;
 
         if s.auto_crc {
             // Enable auto-crc in TX
-            s.reg_update::<TrxCtrl1, _>(|r| r.set_tx_auto_crc_on(true) )?;
+            s.update_register::<TrxCtrl1, _>(|r| r.with_tx_auto_crc_on(true) )?;
         }
 
         // Enable dynamic frame buffer protection
-        s.reg_update::<TrxCtrl2, _>(|r| r.set_rx_safe_mode(true) )?;
+        s.update_register::<TrxCtrl2, _>(|r| r.with_rx_safe_mode(true) )?;
 
         debug!("Device info: {:02x?}", i);
 
@@ -167,11 +171,11 @@ where
 
     pub fn info(&mut self) -> Result<Info, Error<SpiErr, PinErr, DelayErr>> {
         let i = Info {
-            part: self.reg_read2::<PartNum>().map(|p| p.part() )?,
-            ver: self.reg_read(Register::VersionNum)?,
+            part: self.read_register::<PartNum>().map(|p| p.part() )?,
+            ver: self.read_register::<VersionNum>()?.into(),
             mfr: u16::from_le_bytes([
-                self.reg_read(Register::ManId0)?,
-                self.reg_read(Register::ManId1)?,
+                self.read_register::<ManId0>()?.into(),
+                self.read_register::<ManId1>()?.into(),
             ]),
         };
         Ok(i)
@@ -196,29 +200,9 @@ where
     pub fn sram_read(&mut self, offset: u8, data: &mut [u8]) -> Result<(), Error<SpiErr, PinErr, DelayErr>> {
         self.hal.spi_read(&[CommandFlags::SRAM_RD.bits(), offset], data)
     }
-
-    /// Read a device register
-    fn reg_read2<R: Reg>(&mut self) -> Result<R, Error<SpiErr, PinErr, DelayErr>> {
-        let mut d = [0u8];
-        self.hal
-            .spi_read(&[R::ADDRESS as u8 | CommandFlags::REG_RD.bits()], &mut d)?;
-        Ok(R::from(d[0]))
-    }
-
-    /// Write a device register
-    fn reg_write2<R: Reg>(&mut self, v: R) -> Result<(), Error<SpiErr, PinErr, DelayErr>> {
-        self.hal.spi_write(&[R::ADDRESS as u8 | CommandFlags::REG_WR.bits()], &[v.into()])
-    }
-
-    pub fn reg_update<R: Reg, F: Fn(&mut R)>(&mut self, f: F) -> Result<R, Error<SpiErr, PinErr, DelayErr>> {
-        let mut v = self.reg_read2::<R>()?;
-        f(&mut v);
-        self.reg_write2(v)?;
-        Ok(v)
-    }
 }
 
-impl<B, SpiErr, PinErr, DelayErr> radio::Registers<Register>
+impl<B, SpiErr, PinErr, DelayErr> radio::Registers<u8>
     for At86Rf23x<B, SpiErr, PinErr, DelayErr>
 where
     B: Base<SpiErr, PinErr, DelayErr>,
@@ -228,19 +212,21 @@ where
 {
     type Error = Error<SpiErr, PinErr, DelayErr>;
 
-    /// Write a value to a device register
-    fn reg_write(&mut self, reg: Register, v: u8) -> Result<(), Self::Error> {
-        self.hal
-            .spi_write(&[reg as u8 | CommandFlags::REG_WR.bits()], &[v])
-    }
-
-    /// Read a value from a device register
-    fn reg_read(&mut self, reg: Register) -> Result<u8, Self::Error> {
+    /// Read a register value
+    fn read_register<R: radio::Register<u8>>(&mut self) -> Result<R, Self::Error> {
         let mut d = [0u8];
         self.hal
-            .spi_read(&[reg as u8 | CommandFlags::REG_RD.bits()], &mut d)?;
-        Ok(d[0])
+            .spi_read(&[R::ADDRESS as u8 | CommandFlags::REG_RD.bits()], &mut d)?;
+
+        R::try_from(d[0])
+            .map_err(|_e| Error::UnexpectedValue(R::ADDRESS, d[0]))
     }
+
+    /// Write a register value
+    fn write_register<R: radio::Register<u8>>(&mut self, value: R) -> Result<(), Self::Error> {
+        self.hal.spi_write(&[R::ADDRESS as u8 | CommandFlags::REG_WR.bits()], &[value.into()])
+    }
+
 }
 
 impl<B, SpiErr, PinErr, DelayErr> radio::State for At86Rf23x<B, SpiErr, PinErr, DelayErr>
@@ -269,22 +255,16 @@ where
         // TODO: check state is not StateTransitionInProgress before applying
 
         // Write command
-        self.reg_write(Register::TrxCmd, v as u8)
+        self.write_register::<TrxCmd>(v)?;
+
+        Ok(())
     }
 
     fn get_state(&mut self) -> Result<Self::State, Self::Error> {
         use TrxStatus::*;
 
         // Read status register
-        let raw = self.reg_read(Register::TrxStatus)?;
-
-        let trx_status = match TrxStatus::try_from(raw) {
-            Ok(v) => v,
-            Err(e) => {
-                warn!("unrecognised TrxStatus 0x{:02x}", raw);
-                return Err(Error::Unsupported);
-            }
-        };
+        let trx_status = self.read_register::<TrxStatus>()?;
 
         // Convert to state enum
         let s = match trx_status {
@@ -300,7 +280,7 @@ where
             StateTransition => State::Busy,
         };
 
-        debug!("TRX status: 0x{:02x} state: {:?}", raw, s);
+        debug!("TRX status: {:?} state: {:?}", trx_status, s);
 
 
         Ok(s)
@@ -318,7 +298,7 @@ where
     type Error = Error<SpiErr, PinErr, DelayErr>;
 
     fn get_interrupts(&mut self, _: bool) -> Result<Self::Irq, Self::Error> {
-        let irqs = self.reg_read2::<Irqs>()?;
+        let irqs = self.read_register::<Irqs>()?;
 
         if !irqs.is_empty() {
             debug!("IRQs: {:?}", irqs);
@@ -356,10 +336,10 @@ where
         // TODO: support alternate channel configs?
 
         // Load new channel
-        self.reg_update::<PhyCcCca, _>(|r| r.set_channel(ch.channel) )?;
+        self.update_register::<PhyCcCca, _>(|r| r.with_channel(ch.channel) )?;
 
         // Load new bitrate
-        self.reg_update::<TrxCtrl2, _>(|r| r.set_oqpsk_data_rate(ch.bitrate) )?;
+        self.update_register::<TrxCtrl2, _>(|r| r.with_oqpsk_data_rate(ch.bitrate) )?;
 
         Ok(())
     }
@@ -393,7 +373,7 @@ where
         let p = Power::P4dBm;
 
         // Update power register
-        self.reg_update::<PhyTxPwr, _>(|r| r.set_tx_pwr(p) )?;
+        self.update_register::<PhyTxPwr, _>(|r| r.with_tx_pwr(p) )?;
 
         Ok(())
     }
@@ -410,7 +390,7 @@ where
     type Error = Error<SpiErr, PinErr, DelayErr>;
 
     fn poll_rssi(&mut self) -> Result<i16, Self::Error> {
-        let r = self.reg_read2::<PhyRssi>()?;
+        let r = self.read_register::<PhyRssi>()?;
         Ok(-94 + r.rssi() as i16 * 3)
     }
 
@@ -453,13 +433,13 @@ where
 
         // Setup IRQs
         let irqs = Irqs::TRX_END | Irqs::TRX_UR | Irqs::AMI;
-        self.reg_write(Register::IrqMask, irqs.bits())?;
+        self.write_register::<IrqMask>(irqs.bits().into())?;
         let _ = self.get_interrupts(true)?;
 
         debug!("Entering TX state");
 
         // Set to TX state
-        self.reg_write(Register::TrxCmd, TrxCmd::TxStart as u8)?;
+        self.write_register::<TrxCmd>(TrxCmd::TxStart)?;
 
         Ok(())
     }
@@ -472,7 +452,7 @@ where
         }
 
         // Check for RX_START TRX_END RX_CRC_VALID AMI (if extended mode enabled) IRQs, BUSY_RX state
-        let irqs = self.reg_read2::<Irqs>()?;
+        let irqs = self.read_register::<Irqs>()?;
 
         if !irqs.is_empty() {
             debug!("TX IRQs: {:?}", irqs);
@@ -508,13 +488,13 @@ where
 
         // Setup IRQs
         let irqs = Irqs::RX_START | Irqs::TRX_END | Irqs::TRX_UR | Irqs::AMI;
-        self.reg_write(Register::IrqMask, irqs.bits())?;
+        self.write_register::<IrqMask>(irqs.bits().into())?;
         let _ = self.get_interrupts(true)?;
 
         debug!("Entering RX state");
 
         // Set to receive state
-        self.reg_write(Register::TrxCmd, TrxCmd::RxOn as u8)?;
+        self.write_register::<TrxCmd>(TrxCmd::RxOn)?;
 
         Ok(())
     }
@@ -528,7 +508,7 @@ where
         }
 
         // Check for RX_START TRX_END RX_CRC_VALID AMI (if extended mode enabled) IRQs, BUSY_RX state
-        let irqs = self.reg_read2::<Irqs>()?;
+        let irqs = self.read_register::<Irqs>()?;
 
         if !irqs.is_empty() {
             debug!("RX IRQs: {:?}", irqs);
@@ -558,7 +538,7 @@ where
 
     fn get_received(&mut self, buff: &mut [u8]) -> Result<(usize, Self::Info), Self::Error> {      
         // Read RSSI (using energy detect per datasheet recommendation)
-        let ed = self.reg_read2::<PhyEdLevel>()?;
+        let ed = self.read_register::<PhyEdLevel>()?;
         let info = if ed.ed_level() < 0x54 {
             BasicInfo::new(-94 + ed.ed_level() as i16, u16::MIN)
         } else {

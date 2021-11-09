@@ -1,4 +1,4 @@
-use num_enum::TryFromPrimitive;
+use num_enum::{TryFromPrimitive, FromPrimitive, IntoPrimitive};
 
 use modular_bitfield::prelude::*;
 
@@ -50,11 +50,50 @@ pub enum Register {
     IeeeAddr6 = 0x2A, // IEEE_ADDR_6 94
 }
 
-/// Register trait provides address for reading / writing as
-/// well as conversions to/from u8 values
-pub trait Reg: From<u8> + Into<u8> + Copy {
-    const ADDRESS: Register;
+
+#[derive(Copy, Clone, PartialEq, Debug)]
+#[derive(TryFromPrimitive, IntoPrimitive)]
+#[repr(u8)]
+pub enum TrxStatus {
+    POn = 0x00,
+    BusyRx = 0x01,
+    BusyTx = 0x02,
+    RxOn = 0x06,
+    TrxOff = 0x08,
+    PllOn = 0x09,
+    Sleep = 0x0F,
+    PrepDeepSleep = 0x10,
+    BusyRxAack = 0x11,
+    BusyTxAret = 0x12,
+    RxAackOn = 0x16,
+    TxAretOn = 0x19,
+    StateTransition = 0x1F,
 }
+
+impl radio::Register<u8> for TrxStatus {
+    const ADDRESS: u8 = Register::TrxStatus as u8;
+}
+
+#[derive(Copy, Clone, PartialEq, Debug)]
+#[derive(FromPrimitive, IntoPrimitive)]
+#[repr(u8)]
+pub enum TrxCmd {
+    #[default]
+    Nop = 0x00,
+    TxStart = 0x02,
+    ForceTrxOff = 0x03,
+    ForcePllOn = 0x04,
+    RxOn = 0x06,
+    TrxOff = 0x08,
+    PllOn = 0x09,
+    PrepDeepSleep = 0x10,
+    RxAackOn = 0x16,
+    TxAretOn = 0x19,
+}
+impl radio::Register<u8> for TrxCmd {
+    const ADDRESS: u8 = Register::TrxCmd as u8;
+}
+
 
 #[bitfield]
 #[derive(Copy, Clone, PartialEq, Debug)]
@@ -67,8 +106,9 @@ pub struct TrxCtrl0 {
     pub pmu_if_inverse: bool,
     pub clkm_sha_sel: bool,
     pub clkm_ctrl: B3,
-}impl Reg for TrxCtrl0 {
-    const ADDRESS: Register = Register::TrxCtrl0;
+}
+impl radio::Register<u8> for TrxCtrl0 {
+    const ADDRESS: u8 = Register::TrxCtrl0 as u8;
 }
 
 #[bitfield]
@@ -85,9 +125,8 @@ pub struct TrxCtrl1 {
     pub irq_polarity: bool,
 }
 
-
-impl Reg for TrxCtrl1 {
-    const ADDRESS: Register = Register::TrxCtrl1;
+impl radio::Register<u8> for TrxCtrl1 {
+    const ADDRESS: u8 = Register::TrxCtrl1 as u8;
 }
 
 #[bitfield]
@@ -100,8 +139,8 @@ pub struct PhyTxPwr {
 }
 
 
-impl Reg for PhyTxPwr {
-    const ADDRESS: Register = Register::PhyTxPwr;
+impl radio::Register<u8> for PhyTxPwr {
+    const ADDRESS: u8 = Register::PhyTxPwr as u8;
 }
 
 #[derive(Copy, Clone, PartialEq, Debug, BitfieldSpecifier)]
@@ -137,8 +176,8 @@ pub struct PhyRssi {
 }
 
 
-impl Reg for PhyRssi {
-    const ADDRESS: Register = Register::PhyRssi;
+impl radio::Register<u8> for PhyRssi {
+    const ADDRESS: u8 = Register::PhyRssi as u8;
 }
 
 #[bitfield]
@@ -149,8 +188,8 @@ pub struct PhyEdLevel {
     pub ed_level: u8,
 }
 
-impl Reg for PhyEdLevel {
-    const ADDRESS: Register = Register::PhyEdLevel;
+impl radio::Register<u8> for PhyEdLevel {
+    const ADDRESS: u8 = Register::PhyEdLevel as u8;
 }
 
 #[bitfield]
@@ -163,8 +202,8 @@ pub struct PhyCcCca {
     pub channel: Channel,
 }
 
-impl Reg for PhyCcCca {
-    const ADDRESS: Register = Register::PhyCcCca;
+impl radio::Register<u8> for PhyCcCca {
+    const ADDRESS: u8 = Register::PhyCcCca as u8;
 }
 
 /// IEEE802.15.4 channel enumeration
@@ -218,8 +257,8 @@ pub struct CcaThres {
     pub reserved: B4,
     pub cca_ed_thres: B4,
 }
-impl Reg for CcaThres {
-    const ADDRESS: Register = Register::CcaThres;
+impl radio::Register<u8> for CcaThres {
+    const ADDRESS: u8 = Register::CcaThres as u8;
 }
 
 #[bitfield]
@@ -232,8 +271,8 @@ pub struct RxCtrl {
     pub __: B2,
     pub pdt_thresh: B4,
 }
-impl Reg for RxCtrl {
-    const ADDRESS: Register = Register::RxCtrl;
+impl radio::Register<u8> for RxCtrl {
+    const ADDRESS: u8 = Register::RxCtrl as u8;
 }
 
 #[bitfield]
@@ -243,8 +282,8 @@ impl Reg for RxCtrl {
 pub struct SfdValue {
     pub sfd_value: u8,
 }
-impl Reg for SfdValue {
-    const ADDRESS: Register = Register::SfdValue;
+impl radio::Register<u8> for SfdValue {
+    const ADDRESS: u8 = Register::SfdValue as u8;
 }
 
 #[bitfield]
@@ -260,8 +299,8 @@ pub struct TrxCtrl2 {
     pub __1: B2,
     pub oqpsk_data_rate: OqpskDataRate,
 }
-impl Reg for TrxCtrl2 {
-    const ADDRESS: Register = Register::TrxCtrl2;
+impl radio::Register<u8> for TrxCtrl2 {
+    const ADDRESS: u8 = Register::TrxCtrl2 as u8;
 }
 
 #[derive(Copy, Clone, PartialEq, Debug, BitfieldSpecifier)]
@@ -303,8 +342,8 @@ pub struct AntDiv {
     pub ant_ext_sw_en: bool,
     pub ant_ctrl: B2,
 }
-impl Reg for AntDiv {
-    const ADDRESS: Register = Register::AntDiv;
+impl radio::Register<u8> for AntDiv {
+    const ADDRESS: u8 = Register::AntDiv as u8;
 }
 
 #[bitfield]
@@ -314,8 +353,8 @@ impl Reg for AntDiv {
 pub struct IrqMask {
     pub irq_mask: u8,
 }
-impl Reg for IrqMask {
-    const ADDRESS: Register = Register::IrqMask;
+impl radio::Register<u8> for IrqMask {
+    const ADDRESS: u8 = Register::IrqMask as u8;
 }
 #[bitfield]
 #[derive(Copy, Clone, PartialEq, Debug)]
@@ -339,8 +378,8 @@ pub struct IrqStatus {
     /// PLL lock
     pub pll_lock: bool,
 }
-impl Reg for IrqStatus {
-    const ADDRESS: Register = Register::IrqStatus;
+impl radio::Register<u8> for IrqStatus {
+    const ADDRESS: u8 = Register::IrqStatus as u8;
 }
 
 #[bitfield]
@@ -357,8 +396,8 @@ pub struct VregCtrl {
     #[skip]
     pub __2: B2,
 }
-impl Reg for VregCtrl {
-    const ADDRESS: Register = Register::VregCtrl;
+impl radio::Register<u8> for VregCtrl {
+    const ADDRESS: u8 = Register::VregCtrl as u8;
 }
 
 #[bitfield]
@@ -372,8 +411,8 @@ pub struct Batmon {
     pub batmon_hr: bool,
     pub batmon_vth: B4,
 }
-impl Reg for Batmon {
-    const ADDRESS: Register = Register::Batmon;
+impl radio::Register<u8> for Batmon {
+    const ADDRESS: u8 = Register::Batmon as u8;
 }
 
 #[bitfield]
@@ -384,8 +423,8 @@ pub struct XoscCtrl {
     pub xtal_mode: XtalMode,
     pub xtal_trim: B4,
 }
-impl Reg for XoscCtrl {
-    const ADDRESS: Register = Register::XoscCtrl;
+impl radio::Register<u8> for XoscCtrl {
+    const ADDRESS: u8 = Register::XoscCtrl as u8;
 }
 
 #[derive(Copy, Clone, PartialEq, Debug, BitfieldSpecifier)]
@@ -403,8 +442,8 @@ pub enum XtalMode {
 pub struct CcCtrl0 {
     pub cc_number: u8,
 }
-impl Reg for CcCtrl0 {
-    const ADDRESS: Register = Register::CcCtrl0;
+impl radio::Register<u8> for CcCtrl0 {
+    const ADDRESS: u8 = Register::CcCtrl0 as u8;
 }
 
 #[bitfield]
@@ -416,8 +455,8 @@ pub struct CcCtrl1 {
     pub __: B4,
     pub cc_band: B4,
 }
-impl Reg for CcCtrl1 {
-    const ADDRESS: Register = Register::CcCtrl1;
+impl radio::Register<u8> for CcCtrl1 {
+    const ADDRESS: u8 = Register::CcCtrl1 as u8;
 }
 
 #[bitfield]
@@ -430,8 +469,8 @@ pub struct RxSyn {
     pub __: B3,
     pub rx_pdt_level: B4,
 }
-impl Reg for RxSyn {
-    const ADDRESS: Register = Register::RxSyn;
+impl radio::Register<u8> for RxSyn {
+    const ADDRESS: u8 = Register::RxSyn as u8;
 }
 
 #[bitfield]
@@ -448,8 +487,8 @@ pub struct TrxRpc {
     #[skip]
     pub __: bool,
 }
-impl Reg for TrxRpc {
-    const ADDRESS: Register = Register::TrxRpc;
+impl radio::Register<u8> for TrxRpc {
+    const ADDRESS: u8 = Register::TrxRpc as u8;
 }
 
 #[bitfield]
@@ -468,8 +507,8 @@ pub struct XahCtrl1 {
     pub aack_prom_mode: bool,
     pub aack_spc_en: bool,
 }
-impl Reg for XahCtrl1 {
-    const ADDRESS: Register = Register::XahCtrl1;
+impl radio::Register<u8> for XahCtrl1 {
+    const ADDRESS: u8 = Register::XahCtrl1 as u8;
 }
 
 #[bitfield]
@@ -484,8 +523,8 @@ pub struct FtnCtrl {
 }
 
 
-impl Reg for FtnCtrl {
-    const ADDRESS: Register = Register::FtnCtrl;
+impl radio::Register<u8> for FtnCtrl {
+    const ADDRESS: u8 = Register::FtnCtrl as u8;
 }
 
 #[bitfield]
@@ -500,8 +539,8 @@ pub struct XahCtrl2 {
 }
 
 
-impl Reg for XahCtrl2 {
-    const ADDRESS: Register = Register::XahCtrl2;
+impl radio::Register<u8> for XahCtrl2 {
+    const ADDRESS: u8 = Register::XahCtrl2 as u8;
 }
 
 #[bitfield]
@@ -516,8 +555,8 @@ pub struct PllCf {
 }
 
 
-impl Reg for PllCf {
-    const ADDRESS: Register = Register::PllCf;
+impl radio::Register<u8> for PllCf {
+    const ADDRESS: u8 = Register::PllCf as u8;
 }
 
 #[bitfield]
@@ -528,8 +567,44 @@ pub struct PartNum {
     pub part: Part,
 }
 
-impl Reg for PartNum {
-    const ADDRESS: Register = Register::PartNum;
+impl radio::Register<u8> for PartNum {
+    const ADDRESS: u8 = Register::PartNum as u8;
+}
+
+#[bitfield]
+#[derive(Copy, Clone, PartialEq, Debug)]
+#[cfg_attr(feature = "defmt", derive(defmt::Format))]
+#[repr(u8)]
+pub struct VersionNum {
+    pub version: u8,
+}
+
+impl radio::Register<u8> for VersionNum {
+    const ADDRESS: u8 = Register::VersionNum as u8;
+}
+
+#[bitfield]
+#[derive(Copy, Clone, PartialEq, Debug)]
+#[cfg_attr(feature = "defmt", derive(defmt::Format))]
+#[repr(u8)]
+pub struct ManId0 {
+    pub man_id_0: u8,
+}
+
+impl radio::Register<u8> for ManId0 {
+    const ADDRESS: u8 = Register::ManId0 as u8;
+}
+
+#[bitfield]
+#[derive(Copy, Clone, PartialEq, Debug)]
+#[cfg_attr(feature = "defmt", derive(defmt::Format))]
+#[repr(u8)]
+pub struct ManId1 {
+    pub man_id_1: u8,
+}
+
+impl radio::Register<u8> for ManId1 {
+    const ADDRESS: u8 = Register::ManId1 as u8;
 }
 
 #[derive(Copy, Clone, PartialEq, Debug, BitfieldSpecifier)]
@@ -550,8 +625,8 @@ pub struct PllDcu {
     pub reserved: B7,
 }
 
-impl Reg for PllDcu {
-    const ADDRESS: Register = Register::PllDcu;
+impl radio::Register<u8> for PllDcu {
+    const ADDRESS: u8 = Register::PllDcu as u8;
 }
 
 bitflags::bitflags! {
@@ -617,41 +692,8 @@ impl From<Irqs> for u8 {
         v.bits()
     }
 }
-impl Reg for Irqs {
-    const ADDRESS: Register = Register::IrqStatus;
-}
-
-#[derive(Copy, Clone, PartialEq, Debug, TryFromPrimitive)]
-#[repr(u8)]
-pub enum TrxStatus {
-    POn = 0x00,
-    BusyRx = 0x01,
-    BusyTx = 0x02,
-    RxOn = 0x06,
-    TrxOff = 0x08,
-    PllOn = 0x09,
-    Sleep = 0x0F,
-    PrepDeepSleep = 0x10,
-    BusyRxAack = 0x11,
-    BusyTxAret = 0x12,
-    RxAackOn = 0x16,
-    TxAretOn = 0x19,
-    StateTransition = 0x1F,
-}
-
-#[derive(Copy, Clone, PartialEq, Debug, TryFromPrimitive)]
-#[repr(u8)]
-pub enum TrxCmd {
-    Nop = 0x00,
-    TxStart = 0x02,
-    ForceTrxOff = 0x03,
-    ForcePllOn = 0x04,
-    RxOn = 0x06,
-    TrxOff = 0x08,
-    PllOn = 0x09,
-    PrepDeepSleep = 0x10,
-    RxAackOn = 0x16,
-    TxAretOn = 0x19,
+impl radio::Register<u8> for Irqs {
+    const ADDRESS: u8 = Register::IrqStatus as u8;
 }
 
 #[cfg(test)]
