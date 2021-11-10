@@ -38,5 +38,5 @@ path = "src/util/main.rs"
 required-features = [ "util" ]
 
 [patch.crates-io]
-radio = { git = "https://github.com/rust-iot/radio-hal", branch = "register-types" }
-#radio = { path = "../radio-hal" }
+#radio = { git = "https://github.com/rust-iot/radio-hal", branch = "register-types" }
+radio = { path = "../radio-hal" }

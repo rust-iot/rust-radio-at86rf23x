@@ -21,7 +21,6 @@ pub struct At86Rf23x<B, SpiErr: Debug, PinErr: Debug, DelayErr: Debug> {
     _err: PhantomData<Error<SpiErr, PinErr, DelayErr>>,
 }
 
-
 /// AT86RF23x device configuration
 #[derive(Clone, PartialEq, Debug)]
 #[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
@@ -34,11 +33,11 @@ pub struct Config {
 
 impl Default for Config {
     fn default() -> Self {
-        Self { 
+        Self {
             xtal_mode: XtalMode::InternalOscillator,
-            channel: Ch { 
-                bitrate: OqpskDataRate::D250kbps, 
-                channel: CHANNELS[0], 
+            channel: Ch {
+                bitrate: OqpskDataRate::D250kbps,
+                channel: CHANNELS[0],
             },
             auto_crc: true,
         }
@@ -154,15 +153,15 @@ where
         // TODO: set CCA mode
 
         // Enable promiscuous mode
-        s.update_register::<XahCtrl1, _>(|r| r.with_aack_prom_mode(true) )?;
+        s.update_register::<XahCtrl1, _>(|r| r.with_aack_prom_mode(true))?;
 
         if s.auto_crc {
             // Enable auto-crc in TX
-            s.update_register::<TrxCtrl1, _>(|r| r.with_tx_auto_crc_on(true) )?;
+            s.update_register::<TrxCtrl1, _>(|r| r.with_tx_auto_crc_on(true))?;
         }
 
         // Enable dynamic frame buffer protection
-        s.update_register::<TrxCtrl2, _>(|r| r.with_rx_safe_mode(true) )?;
+        s.update_register::<TrxCtrl2, _>(|r| r.with_rx_safe_mode(true))?;
 
         debug!("Device info: {:02x?}", i);
 
@@ -171,7 +170,7 @@ where
 
     pub fn info(&mut self) -> Result<Info, Error<SpiErr, PinErr, DelayErr>> {
         let i = Info {
-            part: self.read_register::<PartNum>().map(|p| p.part() )?,
+            part: self.read_register::<PartNum>().map(|p| p.part())?,
             ver: self.read_register::<VersionNum>()?.into(),
             mfr: u16::from_le_bytes([
                 self.read_register::<ManId0>()?.into(),
@@ -192,18 +191,27 @@ where
     }
 
     /// Write to the device SRAM
-    pub fn sram_write(&mut self, offset: u8, data: &[u8]) -> Result<(), Error<SpiErr, PinErr, DelayErr>> {
-        self.hal.spi_write(&[CommandFlags::SRAM_WR.bits(), offset], data)
+    pub fn sram_write(
+        &mut self,
+        offset: u8,
+        data: &[u8],
+    ) -> Result<(), Error<SpiErr, PinErr, DelayErr>> {
+        self.hal
+            .spi_write(&[CommandFlags::SRAM_WR.bits(), offset], data)
     }
 
     /// Read from the device SRAM
-    pub fn sram_read(&mut self, offset: u8, data: &mut [u8]) -> Result<(), Error<SpiErr, PinErr, DelayErr>> {
-        self.hal.spi_read(&[CommandFlags::SRAM_RD.bits(), offset], data)
+    pub fn sram_read(
+        &mut self,
+        offset: u8,
+        data: &mut [u8],
+    ) -> Result<(), Error<SpiErr, PinErr, DelayErr>> {
+        self.hal
+            .spi_read(&[CommandFlags::SRAM_RD.bits(), offset], data)
     }
 }
 
-impl<B, SpiErr, PinErr, DelayErr> radio::Registers<u8>
-    for At86Rf23x<B, SpiErr, PinErr, DelayErr>
+impl<B, SpiErr, PinErr, DelayErr> radio::Registers<u8> for At86Rf23x<B, SpiErr, PinErr, DelayErr>
 where
     B: Base<SpiErr, PinErr, DelayErr>,
     SpiErr: Debug,
@@ -213,20 +221,52 @@ where
     type Error = Error<SpiErr, PinErr, DelayErr>;
 
     /// Read a register value
-    fn read_register<R: radio::Register<u8>>(&mut self) -> Result<R, Self::Error> {
+    fn read_register<R: radio::Reg<u8>>(&mut self) -> Result<R, Self::Error> {
         let mut d = [0u8];
         self.hal
             .spi_read(&[R::ADDRESS as u8 | CommandFlags::REG_RD.bits()], &mut d)?;
 
-        R::try_from(d[0])
-            .map_err(|_e| Error::UnexpectedValue(R::ADDRESS, d[0]))
+        R::try_from(d[0]).map_err(|_e| Error::UnexpectedValue(R::ADDRESS, d[0]))
     }
 
     /// Write a register value
-    fn write_register<R: radio::Register<u8>>(&mut self, value: R) -> Result<(), Self::Error> {
-        self.hal.spi_write(&[R::ADDRESS as u8 | CommandFlags::REG_WR.bits()], &[value.into()])
+    fn write_register<R: radio::Reg<u8>>(&mut self, value: R) -> Result<(), Self::Error> {
+        self.hal.spi_write(
+            &[R::ADDRESS as u8 | CommandFlags::REG_WR.bits()],
+            &[value.into()],
+        )
+    }
+}
+
+impl<B, SpiErr, PinErr, DelayErr> radio::Registers<u16> for At86Rf23x<B, SpiErr, PinErr, DelayErr>
+where
+    B: Base<SpiErr, PinErr, DelayErr>,
+    SpiErr: Debug,
+    PinErr: Debug,
+    DelayErr: Debug,
+{
+    type Error = Error<SpiErr, PinErr, DelayErr>;
+
+    /// Read a register value
+    fn read_register<R: radio::Reg<u16>>(&mut self) -> Result<R, Self::Error> {
+        let mut r = [0u8, 0u8];
+        self.hal
+            .spi_read(&[R::ADDRESS as u8 | CommandFlags::REG_RD.bits()], &mut r)?;
+
+        let d = u16::from_le_bytes(r);
+
+        R::try_from(d).map_err(|_e| Error::UnexpectedValue(R::ADDRESS, r[0]))
     }
 
+    /// Write a register value
+    fn write_register<R: radio::Reg<u16>>(&mut self, value: R) -> Result<(), Self::Error> {
+        let v = u16::to_le_bytes(value.into());
+
+        self.hal.spi_write(
+            &[R::ADDRESS as u8 | CommandFlags::REG_WR.bits()],
+            &v,
+        )
+    }
 }
 
 impl<B, SpiErr, PinErr, DelayErr> radio::State for At86Rf23x<B, SpiErr, PinErr, DelayErr>
@@ -282,7 +322,6 @@ where
 
         debug!("TRX status: {:?} state: {:?}", trx_status, s);
 
-
         Ok(s)
     }
 }
@@ -336,10 +375,10 @@ where
         // TODO: support alternate channel configs?
 
         // Load new channel
-        self.update_register::<PhyCcCca, _>(|r| r.with_channel(ch.channel) )?;
+        self.update_register::<PhyCcCca, _>(|r| r.with_channel(ch.channel))?;
 
         // Load new bitrate
-        self.update_register::<TrxCtrl2, _>(|r| r.with_oqpsk_data_rate(ch.bitrate) )?;
+        self.update_register::<TrxCtrl2, _>(|r| r.with_oqpsk_data_rate(ch.bitrate))?;
 
         Ok(())
     }
@@ -373,11 +412,10 @@ where
         let p = Power::P4dBm;
 
         // Update power register
-        self.update_register::<PhyTxPwr, _>(|r| r.with_tx_pwr(p) )?;
+        self.update_register::<PhyTxPwr, _>(|r| r.with_tx_pwr(p))?;
 
         Ok(())
     }
-
 }
 
 impl<B, SpiErr, PinErr, DelayErr> radio::Rssi for At86Rf23x<B, SpiErr, PinErr, DelayErr>
@@ -393,7 +431,6 @@ where
         let r = self.read_register::<PhyRssi>()?;
         Ok(-94 + r.rssi() as i16 * 3)
     }
-
 }
 impl<B, SpiErr, PinErr, DelayErr> radio::Transmit for At86Rf23x<B, SpiErr, PinErr, DelayErr>
 where
@@ -448,7 +485,7 @@ where
         // Poll on IRQ pin if available
         // TODO: feature gate this like other impls?
         if !self.hal.irq()? {
-            return Ok(false)
+            return Ok(false);
         }
 
         // Check for RX_START TRX_END RX_CRC_VALID AMI (if extended mode enabled) IRQs, BUSY_RX state
@@ -462,11 +499,9 @@ where
         if irqs.contains(Irqs::TRX_END) {
             debug!("TX complete");
             Ok(true)
-
         } else {
             Ok(false)
         }
-        
     }
 }
 
@@ -504,7 +539,7 @@ where
         // Poll on IRQ pin if available
         // TODO: feature gate this like other impls?
         if !self.hal.irq()? {
-            return Ok(false)
+            return Ok(false);
         }
 
         // Check for RX_START TRX_END RX_CRC_VALID AMI (if extended mode enabled) IRQs, BUSY_RX state
@@ -536,7 +571,7 @@ where
         }
     }
 
-    fn get_received(&mut self, buff: &mut [u8]) -> Result<(usize, Self::Info), Self::Error> {      
+    fn get_received(&mut self, buff: &mut [u8]) -> Result<(usize, Self::Info), Self::Error> {
         // Read RSSI (using energy detect per datasheet recommendation)
         let ed = self.read_register::<PhyEdLevel>()?;
         let info = if ed.ed_level() < 0x54 {
@@ -560,8 +595,6 @@ where
         // Return packet length
         Ok((n, info))
     }
-
-    
 }
 #[cfg(test)]
 mod tests {

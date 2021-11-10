@@ -70,7 +70,9 @@ pub enum TrxStatus {
     StateTransition = 0x1F,
 }
 
-impl radio::Register<u8> for TrxStatus {
+impl radio::Register for TrxStatus {
+type Word = u8;
+
     const ADDRESS: u8 = Register::TrxStatus as u8;
 }
 
@@ -90,7 +92,9 @@ pub enum TrxCmd {
     RxAackOn = 0x16,
     TxAretOn = 0x19,
 }
-impl radio::Register<u8> for TrxCmd {
+impl radio::Register for TrxCmd {
+type Word = u8;
+
     const ADDRESS: u8 = Register::TrxCmd as u8;
 }
 
@@ -107,7 +111,9 @@ pub struct TrxCtrl0 {
     pub clkm_sha_sel: bool,
     pub clkm_ctrl: B3,
 }
-impl radio::Register<u8> for TrxCtrl0 {
+impl radio::Register for TrxCtrl0 {
+type Word = u8;
+
     const ADDRESS: u8 = Register::TrxCtrl0 as u8;
 }
 
@@ -125,7 +131,9 @@ pub struct TrxCtrl1 {
     pub irq_polarity: bool,
 }
 
-impl radio::Register<u8> for TrxCtrl1 {
+impl radio::Register for TrxCtrl1 {
+type Word = u8;
+
     const ADDRESS: u8 = Register::TrxCtrl1 as u8;
 }
 
@@ -139,7 +147,9 @@ pub struct PhyTxPwr {
 }
 
 
-impl radio::Register<u8> for PhyTxPwr {
+impl radio::Register for PhyTxPwr {
+type Word = u8;
+
     const ADDRESS: u8 = Register::PhyTxPwr as u8;
 }
 
@@ -176,7 +186,9 @@ pub struct PhyRssi {
 }
 
 
-impl radio::Register<u8> for PhyRssi {
+impl radio::Register for PhyRssi {
+type Word = u8;
+
     const ADDRESS: u8 = Register::PhyRssi as u8;
 }
 
@@ -188,7 +200,9 @@ pub struct PhyEdLevel {
     pub ed_level: u8,
 }
 
-impl radio::Register<u8> for PhyEdLevel {
+impl radio::Register for PhyEdLevel {
+type Word = u8;
+
     const ADDRESS: u8 = Register::PhyEdLevel as u8;
 }
 
@@ -202,7 +216,9 @@ pub struct PhyCcCca {
     pub channel: Channel,
 }
 
-impl radio::Register<u8> for PhyCcCca {
+impl radio::Register for PhyCcCca {
+type Word = u8;
+
     const ADDRESS: u8 = Register::PhyCcCca as u8;
 }
 
@@ -257,7 +273,9 @@ pub struct CcaThres {
     pub reserved: B4,
     pub cca_ed_thres: B4,
 }
-impl radio::Register<u8> for CcaThres {
+impl radio::Register for CcaThres {
+type Word = u8;
+
     const ADDRESS: u8 = Register::CcaThres as u8;
 }
 
@@ -271,7 +289,9 @@ pub struct RxCtrl {
     pub __: B2,
     pub pdt_thresh: B4,
 }
-impl radio::Register<u8> for RxCtrl {
+impl radio::Register for RxCtrl {
+type Word = u8;
+
     const ADDRESS: u8 = Register::RxCtrl as u8;
 }
 
@@ -282,7 +302,9 @@ impl radio::Register<u8> for RxCtrl {
 pub struct SfdValue {
     pub sfd_value: u8,
 }
-impl radio::Register<u8> for SfdValue {
+impl radio::Register for SfdValue {
+type Word = u8;
+
     const ADDRESS: u8 = Register::SfdValue as u8;
 }
 
@@ -299,7 +321,9 @@ pub struct TrxCtrl2 {
     pub __1: B2,
     pub oqpsk_data_rate: OqpskDataRate,
 }
-impl radio::Register<u8> for TrxCtrl2 {
+impl radio::Register for TrxCtrl2 {
+type Word = u8;
+
     const ADDRESS: u8 = Register::TrxCtrl2 as u8;
 }
 
@@ -342,7 +366,9 @@ pub struct AntDiv {
     pub ant_ext_sw_en: bool,
     pub ant_ctrl: B2,
 }
-impl radio::Register<u8> for AntDiv {
+impl radio::Register for AntDiv {
+type Word = u8;
+
     const ADDRESS: u8 = Register::AntDiv as u8;
 }
 
@@ -353,7 +379,9 @@ impl radio::Register<u8> for AntDiv {
 pub struct IrqMask {
     pub irq_mask: u8,
 }
-impl radio::Register<u8> for IrqMask {
+impl radio::Register for IrqMask {
+type Word = u8;
+
     const ADDRESS: u8 = Register::IrqMask as u8;
 }
 #[bitfield]
@@ -378,7 +406,9 @@ pub struct IrqStatus {
     /// PLL lock
     pub pll_lock: bool,
 }
-impl radio::Register<u8> for IrqStatus {
+impl radio::Register for IrqStatus {
+type Word = u8;
+
     const ADDRESS: u8 = Register::IrqStatus as u8;
 }
 
@@ -396,7 +426,9 @@ pub struct VregCtrl {
     #[skip]
     pub __2: B2,
 }
-impl radio::Register<u8> for VregCtrl {
+impl radio::Register for VregCtrl {
+type Word = u8;
+
     const ADDRESS: u8 = Register::VregCtrl as u8;
 }
 
@@ -411,7 +443,9 @@ pub struct Batmon {
     pub batmon_hr: bool,
     pub batmon_vth: B4,
 }
-impl radio::Register<u8> for Batmon {
+impl radio::Register for Batmon {
+type Word = u8;
+
     const ADDRESS: u8 = Register::Batmon as u8;
 }
 
@@ -423,7 +457,9 @@ pub struct XoscCtrl {
     pub xtal_mode: XtalMode,
     pub xtal_trim: B4,
 }
-impl radio::Register<u8> for XoscCtrl {
+impl radio::Register for XoscCtrl {
+type Word = u8;
+
     const ADDRESS: u8 = Register::XoscCtrl as u8;
 }
 
@@ -442,7 +478,9 @@ pub enum XtalMode {
 pub struct CcCtrl0 {
     pub cc_number: u8,
 }
-impl radio::Register<u8> for CcCtrl0 {
+impl radio::Register for CcCtrl0 {
+type Word = u8;
+
     const ADDRESS: u8 = Register::CcCtrl0 as u8;
 }
 
@@ -455,7 +493,9 @@ pub struct CcCtrl1 {
     pub __: B4,
     pub cc_band: B4,
 }
-impl radio::Register<u8> for CcCtrl1 {
+impl radio::Register for CcCtrl1 {
+type Word = u8;
+
     const ADDRESS: u8 = Register::CcCtrl1 as u8;
 }
 
@@ -469,7 +509,9 @@ pub struct RxSyn {
     pub __: B3,
     pub rx_pdt_level: B4,
 }
-impl radio::Register<u8> for RxSyn {
+impl radio::Register for RxSyn {
+type Word = u8;
+
     const ADDRESS: u8 = Register::RxSyn as u8;
 }
 
@@ -487,7 +529,9 @@ pub struct TrxRpc {
     #[skip]
     pub __: bool,
 }
-impl radio::Register<u8> for TrxRpc {
+impl radio::Register for TrxRpc {
+type Word = u8;
+
     const ADDRESS: u8 = Register::TrxRpc as u8;
 }
 
@@ -507,7 +551,9 @@ pub struct XahCtrl1 {
     pub aack_prom_mode: bool,
     pub aack_spc_en: bool,
 }
-impl radio::Register<u8> for XahCtrl1 {
+impl radio::Register for XahCtrl1 {
+type Word = u8;
+
     const ADDRESS: u8 = Register::XahCtrl1 as u8;
 }
 
@@ -523,7 +569,9 @@ pub struct FtnCtrl {
 }
 
 
-impl radio::Register<u8> for FtnCtrl {
+impl radio::Register for FtnCtrl {
+type Word = u8;
+
     const ADDRESS: u8 = Register::FtnCtrl as u8;
 }
 
@@ -539,7 +587,9 @@ pub struct XahCtrl2 {
 }
 
 
-impl radio::Register<u8> for XahCtrl2 {
+impl radio::Register for XahCtrl2 {
+type Word = u8;
+
     const ADDRESS: u8 = Register::XahCtrl2 as u8;
 }
 
@@ -555,7 +605,9 @@ pub struct PllCf {
 }
 
 
-impl radio::Register<u8> for PllCf {
+impl radio::Register for PllCf {
+type Word = u8;
+
     const ADDRESS: u8 = Register::PllCf as u8;
 }
 
@@ -567,7 +619,9 @@ pub struct PartNum {
     pub part: Part,
 }
 
-impl radio::Register<u8> for PartNum {
+impl radio::Register for PartNum {
+type Word = u8;
+
     const ADDRESS: u8 = Register::PartNum as u8;
 }
 
@@ -579,7 +633,9 @@ pub struct VersionNum {
     pub version: u8,
 }
 
-impl radio::Register<u8> for VersionNum {
+impl radio::Register for VersionNum {
+type Word = u8;
+
     const ADDRESS: u8 = Register::VersionNum as u8;
 }
 
@@ -591,7 +647,9 @@ pub struct ManId0 {
     pub man_id_0: u8,
 }
 
-impl radio::Register<u8> for ManId0 {
+impl radio::Register for ManId0 {
+type Word = u8;
+
     const ADDRESS: u8 = Register::ManId0 as u8;
 }
 
@@ -603,7 +661,9 @@ pub struct ManId1 {
     pub man_id_1: u8,
 }
 
-impl radio::Register<u8> for ManId1 {
+impl radio::Register for ManId1 {
+type Word = u8;
+
     const ADDRESS: u8 = Register::ManId1 as u8;
 }
 
@@ -625,7 +685,9 @@ pub struct PllDcu {
     pub reserved: B7,
 }
 
-impl radio::Register<u8> for PllDcu {
+impl radio::Register for PllDcu {
+type Word = u8;
+
     const ADDRESS: u8 = Register::PllDcu as u8;
 }
 
@@ -692,7 +754,9 @@ impl From<Irqs> for u8 {
         v.bits()
     }
 }
-impl radio::Register<u8> for Irqs {
+impl radio::Register for Irqs {
+type Word = u8;
+
     const ADDRESS: u8 = Register::IrqStatus as u8;
 }
 

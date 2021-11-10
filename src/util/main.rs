@@ -23,7 +23,7 @@ type Radio = At86Rf23x<
 #[derive(Debug, PartialEq, Clone, StructOpt)]
 pub enum Command {
     Info,
-    
+
     #[structopt(flatten)]
     Other(helpers::Operation),
 }
@@ -104,13 +104,13 @@ fn handle_command(
         Command::Info => {
             let i = radio.info()?;
             info!("Radio: {:02x?}", i);
-        },
+        }
         Command::Other(op) => {
             if let Err(e) = helpers::do_operation(radio, op.clone()) {
                 error!("Operation error: {:?}", e);
-                return Err(Error::Unsupported)
+                return Err(Error::Unsupported);
             }
-        },
+        }
     }
 
     Ok(())

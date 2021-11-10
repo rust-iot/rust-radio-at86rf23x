@@ -1,9 +1,9 @@
 use core::fmt::Debug;
 
-use log::trace;
 use embedded_hal::{delay::blocking::*, digital::blocking::*, spi::blocking::*};
+use log::trace;
 
-use crate::{Error};
+use crate::Error;
 
 /// IO container object to centralise IO traits and bounds
 pub struct Io<Spi, Cs, Rst, SlpTr, Irq, Delay> {
@@ -18,11 +18,15 @@ pub struct Io<Spi, Cs, Rst, SlpTr, Irq, Delay> {
 /// Base trait provides methods for underlying device interaction
 pub trait Base<SpiErr: Debug, PinErr: Debug, DelayErr: Debug> {
     /// SPI write command
-    fn spi_write(&mut self, cmd: &[u8], data: &[u8]) -> Result<(), Error<SpiErr, PinErr, DelayErr>>;
+    fn spi_write(&mut self, cmd: &[u8], data: &[u8])
+        -> Result<(), Error<SpiErr, PinErr, DelayErr>>;
 
     /// SPI read command
-    fn spi_read(&mut self, cmd: &[u8], data: &mut [u8])
-        -> Result<(), Error<SpiErr, PinErr, DelayErr>>;
+    fn spi_read(
+        &mut self,
+        cmd: &[u8],
+        data: &mut [u8],
+    ) -> Result<(), Error<SpiErr, PinErr, DelayErr>>;
 
     /// Reset the device
     fn reset(&mut self) -> Result<(), Error<SpiErr, PinErr, DelayErr>>;
@@ -52,7 +56,11 @@ where
     PinErr: Debug,
     DelayErr: Debug,
 {
-    fn spi_write(&mut self, cmd: &[u8], data: &[u8]) -> Result<(), Error<SpiErr, PinErr, DelayErr>> {
+    fn spi_write(
+        &mut self,
+        cmd: &[u8],
+        data: &[u8],
+    ) -> Result<(), Error<SpiErr, PinErr, DelayErr>> {
         let mut t = [Operation::Write(&cmd), Operation::Write(data)];
 
         trace!("SPI write: {:02x?}", t);
@@ -127,4 +135,3 @@ where
         self.delay.delay_us(us).map_err(Error::Delay)
     }
 }
-
