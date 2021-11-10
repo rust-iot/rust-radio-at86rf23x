@@ -262,10 +262,8 @@ where
     fn write_register<R: radio::Reg<u16>>(&mut self, value: R) -> Result<(), Self::Error> {
         let v = u16::to_le_bytes(value.into());
 
-        self.hal.spi_write(
-            &[R::ADDRESS as u8 | CommandFlags::REG_WR.bits()],
-            &v,
-        )
+        self.hal
+            .spi_write(&[R::ADDRESS as u8 | CommandFlags::REG_WR.bits()], &v)
     }
 }
 
