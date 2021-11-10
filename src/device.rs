@@ -1,7 +1,9 @@
-use num_enum::{FromPrimitive, IntoPrimitive, TryFromPrimitive};
+use core::convert::Infallible;
 
 use modular_bitfield::prelude::*;
+use num_enum::{IntoPrimitive, TryFromPrimitive, TryFromPrimitiveError};
 
+/// Register address listing
 #[derive(Copy, Clone, PartialEq, Debug, TryFromPrimitive)]
 #[repr(u8)]
 pub enum Register {
@@ -49,6 +51,7 @@ pub enum Register {
     IeeeAddr6 = 0x2A, // IEEE_ADDR_6 94
 }
 
+/// TRX_STATUS register
 #[derive(Copy, Clone, PartialEq, Debug, TryFromPrimitive, IntoPrimitive)]
 #[repr(u8)]
 pub enum TrxStatus {
@@ -68,14 +71,15 @@ pub enum TrxStatus {
 }
 
 impl radio::Register for TrxStatus {
-    type Word = u8;
     const ADDRESS: u8 = Register::TrxStatus as u8;
+    type Word = u8;
+    type Error = TryFromPrimitiveError<Self>;
 }
 
-#[derive(Copy, Clone, PartialEq, Debug, FromPrimitive, IntoPrimitive)]
+/// TRX_CMD register
+#[derive(Copy, Clone, PartialEq, Debug, TryFromPrimitive, IntoPrimitive)]
 #[repr(u8)]
 pub enum TrxCmd {
-    #[default]
     Nop = 0x00,
     TxStart = 0x02,
     ForceTrxOff = 0x03,
@@ -88,10 +92,12 @@ pub enum TrxCmd {
     TxAretOn = 0x19,
 }
 impl radio::Register for TrxCmd {
-    type Word = u8;
     const ADDRESS: u8 = Register::TrxCmd as u8;
+    type Word = u8;
+    type Error = TryFromPrimitiveError<Self>;
 }
 
+/// TRX_CTRL0 register
 #[bitfield]
 #[derive(Copy, Clone, PartialEq, Debug)]
 #[cfg_attr(feature = "defmt", derive(defmt::Format))]
@@ -105,10 +111,12 @@ pub struct TrxCtrl0 {
     pub clkm_ctrl: B3,
 }
 impl radio::Register for TrxCtrl0 {
-    type Word = u8;
     const ADDRESS: u8 = Register::TrxCtrl0 as u8;
+    type Word = u8;
+    type Error = Infallible;
 }
 
+/// TRX_CTRL1 register
 #[bitfield]
 #[derive(Copy, Clone, PartialEq, Debug)]
 #[cfg_attr(feature = "defmt", derive(defmt::Format))]
@@ -124,10 +132,12 @@ pub struct TrxCtrl1 {
 }
 
 impl radio::Register for TrxCtrl1 {
-    type Word = u8;
     const ADDRESS: u8 = Register::TrxCtrl1 as u8;
+    type Word = u8;
+    type Error = Infallible;
 }
 
+/// PHY_TX_PWR register
 #[bitfield]
 #[derive(Copy, Clone, PartialEq, Debug)]
 #[cfg_attr(feature = "defmt", derive(defmt::Format))]
@@ -138,10 +148,12 @@ pub struct PhyTxPwr {
 }
 
 impl radio::Register for PhyTxPwr {
-    type Word = u8;
     const ADDRESS: u8 = Register::PhyTxPwr as u8;
+    type Word = u8;
+    type Error = Infallible;
 }
 
+/// RF output power enumeration. Used in PHY_TX_PWR
 #[derive(Copy, Clone, PartialEq, Debug, BitfieldSpecifier)]
 #[cfg_attr(feature = "defmt", derive(defmt::Format))]
 #[bits = 4]
@@ -164,6 +176,7 @@ pub enum Power {
     Pn17dBm = 0xF,
 }
 
+/// PHY_RSSI register
 #[bitfield]
 #[derive(Copy, Clone, PartialEq, Debug)]
 #[cfg_attr(feature = "defmt", derive(defmt::Format))]
@@ -175,10 +188,12 @@ pub struct PhyRssi {
 }
 
 impl radio::Register for PhyRssi {
-    type Word = u8;
     const ADDRESS: u8 = Register::PhyRssi as u8;
+    type Word = u8;
+    type Error = Infallible;
 }
 
+/// PHY_ED_LEVEL register
 #[bitfield]
 #[derive(Copy, Clone, PartialEq, Debug)]
 #[cfg_attr(feature = "defmt", derive(defmt::Format))]
@@ -188,10 +203,12 @@ pub struct PhyEdLevel {
 }
 
 impl radio::Register for PhyEdLevel {
-    type Word = u8;
     const ADDRESS: u8 = Register::PhyEdLevel as u8;
+    type Word = u8;
+    type Error = Infallible;
 }
 
+/// PHY_CC_CCA register
 #[bitfield]
 #[derive(Copy, Clone, PartialEq, Debug)]
 #[cfg_attr(feature = "defmt", derive(defmt::Format))]
@@ -203,11 +220,12 @@ pub struct PhyCcCca {
 }
 
 impl radio::Register for PhyCcCca {
-    type Word = u8;
     const ADDRESS: u8 = Register::PhyCcCca as u8;
+    type Word = u8;
+    type Error = Infallible;
 }
 
-/// IEEE802.15.4 channel enumeration
+/// IEEE802.15.4 channel enumeration (for default channel mode)
 #[derive(Copy, Clone, PartialEq, Debug, BitfieldSpecifier)]
 #[cfg_attr(feature = "defmt", derive(defmt::Format))]
 #[bits = 5]
@@ -230,7 +248,7 @@ pub enum Channel {
     C2480MHz = 0x1A,
 }
 
-/// Constant channel list for access by index
+/// Channel list for access by IEEE802.15.4 channel index
 pub const CHANNELS: &[Channel] = &[
     Channel::C2405MHz,
     Channel::C2410MHz,
@@ -250,6 +268,7 @@ pub const CHANNELS: &[Channel] = &[
     Channel::C2480MHz,
 ];
 
+/// CCA_THRES register
 #[bitfield]
 #[derive(Copy, Clone, PartialEq, Debug)]
 #[cfg_attr(feature = "defmt", derive(defmt::Format))]
@@ -259,10 +278,12 @@ pub struct CcaThres {
     pub cca_ed_thres: B4,
 }
 impl radio::Register for CcaThres {
-    type Word = u8;
     const ADDRESS: u8 = Register::CcaThres as u8;
+    type Word = u8;
+    type Error = Infallible;
 }
 
+/// RX_CTRL register
 #[bitfield]
 #[derive(Copy, Clone, PartialEq, Debug)]
 #[cfg_attr(feature = "defmt", derive(defmt::Format))]
@@ -274,10 +295,12 @@ pub struct RxCtrl {
     pub pdt_thresh: B4,
 }
 impl radio::Register for RxCtrl {
-    type Word = u8;
     const ADDRESS: u8 = Register::RxCtrl as u8;
+    type Word = u8;
+    type Error = Infallible;
 }
 
+/// SFD_VALUE
 #[bitfield]
 #[derive(Copy, Clone, PartialEq, Debug)]
 #[cfg_attr(feature = "defmt", derive(defmt::Format))]
@@ -286,10 +309,12 @@ pub struct SfdValue {
     pub sfd_value: u8,
 }
 impl radio::Register for SfdValue {
-    type Word = u8;
     const ADDRESS: u8 = Register::SfdValue as u8;
+    type Word = u8;
+    type Error = Infallible;
 }
 
+/// TRX_CTRL2
 #[bitfield]
 #[derive(Copy, Clone, PartialEq, Debug)]
 #[cfg_attr(feature = "defmt", derive(defmt::Format))]
@@ -304,10 +329,12 @@ pub struct TrxCtrl2 {
     pub oqpsk_data_rate: OqpskDataRate,
 }
 impl radio::Register for TrxCtrl2 {
-    type Word = u8;
     const ADDRESS: u8 = Register::TrxCtrl2 as u8;
+    type Word = u8;
+    type Error = Infallible;
 }
 
+/// OQPSK data rate enumeration, used in [TrxCtrl2]
 #[derive(Copy, Clone, PartialEq, Debug, BitfieldSpecifier)]
 #[cfg_attr(feature = "defmt", derive(defmt::Format))]
 #[bits = 3]
@@ -333,6 +360,7 @@ impl TryFrom<u32> for OqpskDataRate {
     }
 }
 
+/// ANT_DIV register
 #[bitfield]
 #[derive(Copy, Clone, PartialEq, Debug)]
 #[cfg_attr(feature = "defmt", derive(defmt::Format))]
@@ -346,10 +374,12 @@ pub struct AntDiv {
     pub ant_ctrl: B2,
 }
 impl radio::Register for AntDiv {
-    type Word = u8;
     const ADDRESS: u8 = Register::AntDiv as u8;
+    type Word = u8;
+    type Error = Infallible;
 }
 
+/// IRQ_MASK register
 #[bitfield]
 #[derive(Copy, Clone, PartialEq, Debug)]
 #[cfg_attr(feature = "defmt", derive(defmt::Format))]
@@ -358,9 +388,12 @@ pub struct IrqMask {
     pub irq_mask: u8,
 }
 impl radio::Register for IrqMask {
-    type Word = u8;
     const ADDRESS: u8 = Register::IrqMask as u8;
+    type Word = u8;
+    type Error = Infallible;
 }
+
+/// IRQ_STATUS register
 #[bitfield]
 #[derive(Copy, Clone, PartialEq, Debug)]
 #[cfg_attr(feature = "defmt", derive(defmt::Format))]
@@ -384,10 +417,12 @@ pub struct IrqStatus {
     pub pll_lock: bool,
 }
 impl radio::Register for IrqStatus {
-    type Word = u8;
     const ADDRESS: u8 = Register::IrqStatus as u8;
+    type Word = u8;
+    type Error = Infallible;
 }
 
+/// VREG_CTRL register
 #[bitfield]
 #[derive(Copy, Clone, PartialEq, Debug)]
 #[cfg_attr(feature = "defmt", derive(defmt::Format))]
@@ -403,10 +438,12 @@ pub struct VregCtrl {
     pub __2: B2,
 }
 impl radio::Register for VregCtrl {
-    type Word = u8;
     const ADDRESS: u8 = Register::VregCtrl as u8;
+    type Word = u8;
+    type Error = Infallible;
 }
 
+/// BATMON register
 #[bitfield]
 #[derive(Copy, Clone, PartialEq, Debug)]
 #[cfg_attr(feature = "defmt", derive(defmt::Format))]
@@ -419,10 +456,12 @@ pub struct Batmon {
     pub batmon_vth: B4,
 }
 impl radio::Register for Batmon {
-    type Word = u8;
     const ADDRESS: u8 = Register::Batmon as u8;
+    type Word = u8;
+    type Error = Infallible;
 }
 
+/// XOSC_CTRL register
 #[bitfield]
 #[derive(Copy, Clone, PartialEq, Debug)]
 #[cfg_attr(feature = "defmt", derive(defmt::Format))]
@@ -432,8 +471,9 @@ pub struct XoscCtrl {
     pub xtal_trim: B4,
 }
 impl radio::Register for XoscCtrl {
-    type Word = u8;
     const ADDRESS: u8 = Register::XoscCtrl as u8;
+    type Word = u8;
+    type Error = Infallible;
 }
 
 #[derive(Copy, Clone, PartialEq, Debug, BitfieldSpecifier)]
@@ -452,8 +492,9 @@ pub struct CcCtrl0 {
     pub cc_number: u8,
 }
 impl radio::Register for CcCtrl0 {
-    type Word = u8;
     const ADDRESS: u8 = Register::CcCtrl0 as u8;
+    type Word = u8;
+    type Error = Infallible;
 }
 
 #[bitfield]
@@ -466,8 +507,9 @@ pub struct CcCtrl1 {
     pub cc_band: B4,
 }
 impl radio::Register for CcCtrl1 {
-    type Word = u8;
     const ADDRESS: u8 = Register::CcCtrl1 as u8;
+    type Word = u8;
+    type Error = Infallible;
 }
 
 #[bitfield]
@@ -481,8 +523,9 @@ pub struct RxSyn {
     pub rx_pdt_level: B4,
 }
 impl radio::Register for RxSyn {
-    type Word = u8;
     const ADDRESS: u8 = Register::RxSyn as u8;
+    type Word = u8;
+    type Error = Infallible;
 }
 
 #[bitfield]
@@ -500,8 +543,9 @@ pub struct TrxRpc {
     pub __: bool,
 }
 impl radio::Register for TrxRpc {
-    type Word = u8;
     const ADDRESS: u8 = Register::TrxRpc as u8;
+    type Word = u8;
+    type Error = Infallible;
 }
 
 #[bitfield]
@@ -521,8 +565,9 @@ pub struct XahCtrl1 {
     pub aack_spc_en: bool,
 }
 impl radio::Register for XahCtrl1 {
-    type Word = u8;
     const ADDRESS: u8 = Register::XahCtrl1 as u8;
+    type Word = u8;
+    type Error = Infallible;
 }
 
 #[bitfield]
@@ -537,8 +582,9 @@ pub struct FtnCtrl {
 }
 
 impl radio::Register for FtnCtrl {
-    type Word = u8;
     const ADDRESS: u8 = Register::FtnCtrl as u8;
+    type Word = u8;
+    type Error = Infallible;
 }
 
 #[bitfield]
@@ -553,8 +599,9 @@ pub struct XahCtrl2 {
 }
 
 impl radio::Register for XahCtrl2 {
-    type Word = u8;
     const ADDRESS: u8 = Register::XahCtrl2 as u8;
+    type Word = u8;
+    type Error = Infallible;
 }
 
 #[bitfield]
@@ -569,8 +616,9 @@ pub struct PllCf {
 }
 
 impl radio::Register for PllCf {
-    type Word = u8;
     const ADDRESS: u8 = Register::PllCf as u8;
+    type Word = u8;
+    type Error = Infallible;
 }
 
 #[bitfield]
@@ -582,8 +630,9 @@ pub struct PartNum {
 }
 
 impl radio::Register for PartNum {
-    type Word = u8;
     const ADDRESS: u8 = Register::PartNum as u8;
+    type Word = u8;
+    type Error = Infallible;
 }
 
 #[bitfield]
@@ -595,8 +644,9 @@ pub struct VersionNum {
 }
 
 impl radio::Register for VersionNum {
-    type Word = u8;
     const ADDRESS: u8 = Register::VersionNum as u8;
+    type Word = u8;
+    type Error = Infallible;
 }
 
 #[bitfield]
@@ -608,8 +658,9 @@ pub struct ManId0 {
 }
 
 impl radio::Register for ManId0 {
-    type Word = u8;
     const ADDRESS: u8 = Register::ManId0 as u8;
+    type Word = u8;
+    type Error = Infallible;
 }
 
 #[bitfield]
@@ -621,8 +672,9 @@ pub struct ManId1 {
 }
 
 impl radio::Register for ManId1 {
-    type Word = u8;
     const ADDRESS: u8 = Register::ManId1 as u8;
+    type Word = u8;
+    type Error = Infallible;
 }
 
 #[derive(Copy, Clone, PartialEq, Debug, BitfieldSpecifier)]
@@ -644,8 +696,9 @@ pub struct PllDcu {
 }
 
 impl radio::Register for PllDcu {
-    type Word = u8;
     const ADDRESS: u8 = Register::PllDcu as u8;
+    type Word = u8;
+    type Error = Infallible;
 }
 
 bitflags::bitflags! {
@@ -681,7 +734,7 @@ bitflags::bitflags! {
 }
 
 bitflags::bitflags! {
-    /// IRQ flags (alternate version)
+    /// IRQ flags (alternate bitflag version)
     pub struct Irqs: u8 {
         /// Supply voltage below programmed threshold
         const BATT_LOW      = 0b1000_0000;
@@ -712,8 +765,9 @@ impl From<Irqs> for u8 {
     }
 }
 impl radio::Register for Irqs {
-    type Word = u8;
     const ADDRESS: u8 = Register::IrqStatus as u8;
+    type Word = u8;
+    type Error = Infallible;
 }
 
 #[cfg(test)]

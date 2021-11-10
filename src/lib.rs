@@ -221,7 +221,7 @@ where
     type Error = Error<SpiErr, PinErr, DelayErr>;
 
     /// Read a register value
-    fn read_register<R: radio::Reg<u8>>(&mut self) -> Result<R, Self::Error> {
+    fn read_register<R: radio::Register<Word = u8>>(&mut self) -> Result<R, Self::Error> {
         let mut d = [0u8];
         self.hal
             .spi_read(&[R::ADDRESS as u8 | CommandFlags::REG_RD.bits()], &mut d)?;
@@ -230,7 +230,10 @@ where
     }
 
     /// Write a register value
-    fn write_register<R: radio::Reg<u8>>(&mut self, value: R) -> Result<(), Self::Error> {
+    fn write_register<R: radio::Register<Word = u8>>(
+        &mut self,
+        value: R,
+    ) -> Result<(), Self::Error> {
         self.hal.spi_write(
             &[R::ADDRESS as u8 | CommandFlags::REG_WR.bits()],
             &[value.into()],
@@ -248,7 +251,7 @@ where
     type Error = Error<SpiErr, PinErr, DelayErr>;
 
     /// Read a register value
-    fn read_register<R: radio::Reg<u16>>(&mut self) -> Result<R, Self::Error> {
+    fn read_register<R: radio::Register<Word = u16>>(&mut self) -> Result<R, Self::Error> {
         let mut r = [0u8, 0u8];
         self.hal
             .spi_read(&[R::ADDRESS as u8 | CommandFlags::REG_RD.bits()], &mut r)?;
@@ -259,7 +262,10 @@ where
     }
 
     /// Write a register value
-    fn write_register<R: radio::Reg<u16>>(&mut self, value: R) -> Result<(), Self::Error> {
+    fn write_register<R: radio::Register<Word = u16>>(
+        &mut self,
+        value: R,
+    ) -> Result<(), Self::Error> {
         let v = u16::to_le_bytes(value.into());
 
         self.hal
