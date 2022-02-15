@@ -12,7 +12,7 @@ util = ["structopt", "tracing", "tracing-subscriber", "humantime", "driver-pal/h
 default = [ "util", "driver-pal/hal-cp2130", "driver-pal/hal-linux" ]
 
 [dependencies]
-radio = "0.10.0"
+radio = "0.11.0"
 embedded-hal = "1.0.0-alpha.5"
 
 driver-pal = { version = "0.8.0-alpha.5", default_features = false }
