@@ -1,6 +1,7 @@
 use core::fmt::Debug;
 
 use embedded_hal::{delay::blocking::*, digital::blocking::*, spi::blocking::*};
+use embedded_hal::{spi, digital, delay};
 use log::trace;
 
 use crate::Error;
@@ -16,51 +17,61 @@ pub struct Io<Spi, Cs, Rst, SlpTr, Irq, Delay> {
 }
 
 /// Base trait provides methods for underlying device interaction
-pub trait Base<SpiErr: Debug, PinErr: Debug, DelayErr: Debug> {
+pub trait Base {
+    type SpiErr: Debug;
+    type PinErr: Debug;
+    type DelayErr: Debug;
+
     /// SPI write command
     fn spi_write(&mut self, cmd: &[u8], data: &[u8])
-        -> Result<(), Error<SpiErr, PinErr, DelayErr>>;
+        -> Result<(), Error<Self::SpiErr, Self::PinErr, Self::DelayErr>>;
 
     /// SPI read command
     fn spi_read(
         &mut self,
         cmd: &[u8],
         data: &mut [u8],
-    ) -> Result<(), Error<SpiErr, PinErr, DelayErr>>;
+    ) -> Result<(), Error<Self::SpiErr, Self::PinErr, Self::DelayErr>>;
 
     /// Reset the device
-    fn reset(&mut self) -> Result<(), Error<SpiErr, PinErr, DelayErr>>;
+    fn reset(&mut self) -> Result<(), Error<Self::SpiErr, Self::PinErr, Self::DelayErr>>;
 
     /// Control SLP_TR pin
-    fn slp_tr(&mut self, state: bool) -> Result<(), Error<SpiErr, PinErr, DelayErr>>;
+    fn slp_tr(&mut self, state: bool) -> Result<(), Error<Self::SpiErr, Self::PinErr, Self::DelayErr>>;
 
     /// Read IRQ pin state
-    fn irq(&mut self) -> Result<bool, Error<SpiErr, PinErr, DelayErr>>;
+    fn irq(&mut self) -> Result<bool, Error<Self::SpiErr, Self::PinErr, Self::DelayErr>>;
 
-    fn delay_ms(&mut self, ms: u32) -> Result<(), Error<SpiErr, PinErr, DelayErr>>;
+    fn delay_ms(&mut self, ms: u32) -> Result<(), Error<Self::SpiErr, Self::PinErr, Self::DelayErr>>;
 
-    fn delay_us(&mut self, us: u32) -> Result<(), Error<SpiErr, PinErr, DelayErr>>;
+    fn delay_us(&mut self, us: u32) -> Result<(), Error<Self::SpiErr, Self::PinErr, Self::DelayErr>>;
 }
 
 /// Base trait implementation for Io objects
-impl<Spi, SpiErr, Cs, Rst, SlpTr, Irq, PinErr, Delay, DelayErr> Base<SpiErr, PinErr, DelayErr>
+impl<Spi, SpiErr, Cs, Rst, SlpTr, Irq, PinErr, Delay, DelayErr> Base
     for Io<Spi, Cs, Rst, SlpTr, Irq, Delay>
 where
     Spi: Transactional<u8, Error = SpiErr>,
+    <Spi as spi::ErrorType>::Error: Debug,
+
+    Delay: DelayUs<Error = DelayErr>,
+    <Delay as DelayUs>::Error: Debug,
+
     Cs: OutputPin<Error = PinErr>,
     Rst: OutputPin<Error = PinErr>,
     SlpTr: OutputPin<Error = PinErr>,
     Irq: InputPin<Error = PinErr>,
-    Delay: DelayMs<u32, Error = DelayErr> + DelayUs<u32, Error = DelayErr>,
-    SpiErr: Debug,
     PinErr: Debug,
-    DelayErr: Debug,
 {
+    type SpiErr = <Spi as spi::ErrorType>::Error;
+    type DelayErr = <Delay as DelayUs>::Error;
+    type PinErr = PinErr;
+
     fn spi_write(
         &mut self,
         cmd: &[u8],
         data: &[u8],
-    ) -> Result<(), Error<SpiErr, PinErr, DelayErr>> {
+    ) -> Result<(), Error<Self::SpiErr, Self::PinErr, Self::DelayErr>> {
         let mut t = [Operation::Write(&cmd), Operation::Write(data)];
 
         trace!("SPI write: {:02x?}", t);
@@ -78,8 +89,8 @@ where
         &mut self,
         cmd: &[u8],
         data: &mut [u8],
-    ) -> Result<(), Error<SpiErr, PinErr, DelayErr>> {
-        let mut t = [Operation::Write(&cmd), Operation::Transfer(data)];
+    ) -> Result<(), Error<Self::SpiErr, Self::PinErr, Self::DelayErr>> {
+        let mut t = [Operation::Write(&cmd), Operation::TransferInplace(data)];
 
         self.cs.set_low().map_err(Error::Pin)?;
 
@@ -92,7 +103,7 @@ where
         r
     }
 
-    fn reset(&mut self) -> Result<(), Error<SpiErr, PinErr, DelayErr>> {
+    fn reset(&mut self) -> Result<(), Error<Self::SpiErr, Self::PinErr, Self::DelayErr>> {
         // Deassert CS pin (active high)
         self.cs.set_high().map_err(Error::Pin)?;
 
@@ -116,22 +127,22 @@ where
         r
     }
 
-    fn slp_tr(&mut self, state: bool) -> Result<(), Error<SpiErr, PinErr, DelayErr>> {
+    fn slp_tr(&mut self, state: bool) -> Result<(), Error<Self::SpiErr, Self::PinErr, Self::DelayErr>> {
         match state {
             true => self.slp_tr.set_high().map_err(Error::Pin),
             false => self.slp_tr.set_low().map_err(Error::Pin),
         }
     }
 
-    fn irq(&mut self) -> Result<bool, Error<SpiErr, PinErr, DelayErr>> {
+    fn irq(&mut self) -> Result<bool, Error<Self::SpiErr, Self::PinErr, Self::DelayErr>> {
         self.irq.is_high().map_err(Error::Pin)
     }
 
-    fn delay_ms(&mut self, ms: u32) -> Result<(), Error<SpiErr, PinErr, DelayErr>> {
+    fn delay_ms(&mut self, ms: u32) -> Result<(), Error<Self::SpiErr, Self::PinErr, Self::DelayErr>> {
         self.delay.delay_ms(ms).map_err(Error::Delay)
     }
 
-    fn delay_us(&mut self, us: u32) -> Result<(), Error<SpiErr, PinErr, DelayErr>> {
+    fn delay_us(&mut self, us: u32) -> Result<(), Error<Self::SpiErr, Self::PinErr, Self::DelayErr>> {
         self.delay.delay_us(us).map_err(Error::Delay)
     }
 }

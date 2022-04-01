@@ -1,7 +1,9 @@
 use core::fmt::Debug;
+use core::marker::PhantomData;
+
 use embedded_hal::delay::blocking::DelayUs;
 use log::{debug, warn};
-use std::marker::PhantomData;
+
 
 use radio::{BasicInfo, Channel as _, Interrupts, Registers as _, State as _};
 
@@ -15,10 +17,9 @@ use device::*;
 pub use device::CHANNELS;
 
 /// AT86RF23x driver object
-pub struct At86Rf23x<B, SpiErr: Debug, PinErr: Debug, DelayErr: Debug> {
+pub struct At86Rf23x<B: Base> {
     hal: B,
     auto_crc: bool,
-    _err: PhantomData<Error<SpiErr, PinErr, DelayErr>>,
 }
 
 /// AT86RF23x device configuration
@@ -73,6 +74,18 @@ pub enum Error<SpiErr: Debug, PinErr: Debug, DelayErr: Debug> {
     #[error("Unexpected register value (reg: 0x{0:02x} val: 0x:{1:02x}")]
     /// No response from device
     UnexpectedValue(u8, u8),
+
+    #[cfg(feature="common-modulation")]
+    #[error("Unsupported modulation configuration")]
+    /// Unsupported modulation
+    Modulation(radio::modulation::ModError),
+}
+
+#[cfg(feature="common-modulation")]
+impl <SpiErr: Debug, PinErr: Debug, DelayErr: Debug> From<radio::modulation::ModError> for Error<B::SpiErr, B::PinErr, B::DelayErr> {
+    fn from(m: radio::modulation::ModError) -> Self {
+        Error::Modulation(m)
+    }
 }
 
 #[derive(Copy, Clone, PartialEq, Debug, strum_macros::Display)]
@@ -107,18 +120,14 @@ pub struct Info {
     pub mfr: u16,
 }
 
-impl<B, SpiErr, PinErr, DelayErr> At86Rf23x<B, SpiErr, PinErr, DelayErr>
+impl<B> At86Rf23x<B>
 where
-    B: Base<SpiErr, PinErr, DelayErr>,
-    SpiErr: Debug,
-    PinErr: Debug,
-    DelayErr: Debug,
+    B: Base,
 {
-    pub fn new(hal: B, config: Config) -> Result<Self, Error<SpiErr, PinErr, DelayErr>> {
+    pub fn new(hal: B, config: Config) -> Result<Self, Error<B::SpiErr, B::PinErr, B::DelayErr>> {
         let mut s = Self {
             hal,
             auto_crc: config.auto_crc,
-            _err: PhantomData,
         };
 
         debug!("Connecting to device");
@@ -168,7 +177,8 @@ where
         Ok(s)
     }
 
-    pub fn info(&mut self) -> Result<Info, Error<SpiErr, PinErr, DelayErr>> {
+    /// Read device information
+    pub fn info(&mut self) -> Result<Info, Error<B::SpiErr, B::PinErr, B::DelayErr>> {
         let i = Info {
             part: self.read_register::<PartNum>().map(|p| p.part())?,
             ver: self.read_register::<VersionNum>()?.into(),
@@ -180,13 +190,43 @@ where
         Ok(i)
     }
 
+    /// Set 802.15.4 PAN ID
+    pub fn set_pan_id(&mut self, pan_id: u16) -> Result<(), Error<B::SpiErr, B::PinErr, B::DelayErr>> {
+        let b = pan_id.to_le_bytes();
+        self.write_register::<PanId0>(b[0].into())?;
+        self.write_register::<PanId1>(b[1].into())?;
+        Ok(())
+    }
+
+    /// Set 802.15.4 Short (16-bit) address
+    pub fn set_short_addr(&mut self, short_addr: u16) -> Result<(), Error<B::SpiErr, B::PinErr, B::DelayErr>> {
+        let b = short_addr.to_le_bytes();
+        self.write_register::<ShortAddr0>(b[0].into())?;
+        self.write_register::<ShortAddr1>(b[1].into())?;
+        Ok(())
+    }
+
+    /// Set 802.15.4 Long (64-bit) address
+    pub fn set_long_addr(&mut self, long_addr: u64) -> Result<(), Error<B::SpiErr, B::PinErr, B::DelayErr>> {
+        let b = long_addr.to_le_bytes();
+        self.write_register::<IeeeAddr0>(b[0].into())?;
+        self.write_register::<IeeeAddr1>(b[1].into())?;
+        self.write_register::<IeeeAddr2>(b[2].into())?;
+        self.write_register::<IeeeAddr3>(b[3].into())?;
+        self.write_register::<IeeeAddr0>(b[4].into())?;
+        self.write_register::<IeeeAddr1>(b[5].into())?;
+        self.write_register::<IeeeAddr2>(b[6].into())?;
+        self.write_register::<IeeeAddr3>(b[7].into())?;
+        Ok(())
+    }
+
     /// Write to the device FIFO
-    pub fn fifo_write(&mut self, data: &[u8]) -> Result<(), Error<SpiErr, PinErr, DelayErr>> {
+    pub fn fifo_write(&mut self, data: &[u8]) -> Result<(), Error<B::SpiErr, B::PinErr, B::DelayErr>> {
         self.hal.spi_write(&[CommandFlags::BUFF_WR.bits()], data)
     }
 
     /// Read from the device FIFO
-    pub fn fifo_read(&mut self, data: &mut [u8]) -> Result<(), Error<SpiErr, PinErr, DelayErr>> {
+    pub fn fifo_read(&mut self, data: &mut [u8]) -> Result<(), Error<B::SpiErr, B::PinErr, B::DelayErr>> {
         self.hal.spi_read(&[CommandFlags::BUFF_RD.bits()], data)
     }
 
@@ -195,7 +235,7 @@ where
         &mut self,
         offset: u8,
         data: &[u8],
-    ) -> Result<(), Error<SpiErr, PinErr, DelayErr>> {
+    ) -> Result<(), Error<B::SpiErr, B::PinErr, B::DelayErr>> {
         self.hal
             .spi_write(&[CommandFlags::SRAM_WR.bits(), offset], data)
     }
@@ -205,20 +245,17 @@ where
         &mut self,
         offset: u8,
         data: &mut [u8],
-    ) -> Result<(), Error<SpiErr, PinErr, DelayErr>> {
+    ) -> Result<(), Error<B::SpiErr, B::PinErr, B::DelayErr>> {
         self.hal
             .spi_read(&[CommandFlags::SRAM_RD.bits(), offset], data)
     }
 }
 
-impl<B, SpiErr, PinErr, DelayErr> radio::Registers<u8> for At86Rf23x<B, SpiErr, PinErr, DelayErr>
+impl<B> radio::Registers<u8> for At86Rf23x<B>
 where
-    B: Base<SpiErr, PinErr, DelayErr>,
-    SpiErr: Debug,
-    PinErr: Debug,
-    DelayErr: Debug,
+    B: Base,
 {
-    type Error = Error<SpiErr, PinErr, DelayErr>;
+    type Error = Error<B::SpiErr, B::PinErr, B::DelayErr>;
 
     /// Read a register value
     fn read_register<R: radio::Register<Word = u8>>(&mut self) -> Result<R, Self::Error> {
@@ -241,14 +278,11 @@ where
     }
 }
 
-impl<B, SpiErr, PinErr, DelayErr> radio::Registers<u16> for At86Rf23x<B, SpiErr, PinErr, DelayErr>
+impl<B> radio::Registers<u16> for At86Rf23x<B>
 where
-    B: Base<SpiErr, PinErr, DelayErr>,
-    SpiErr: Debug,
-    PinErr: Debug,
-    DelayErr: Debug,
+    B: Base,
 {
-    type Error = Error<SpiErr, PinErr, DelayErr>;
+    type Error = Error<B::SpiErr, B::PinErr, B::DelayErr>;
 
     /// Read a register value
     fn read_register<R: radio::Register<Word = u16>>(&mut self) -> Result<R, Self::Error> {
@@ -273,15 +307,12 @@ where
     }
 }
 
-impl<B, SpiErr, PinErr, DelayErr> radio::State for At86Rf23x<B, SpiErr, PinErr, DelayErr>
+impl<B> radio::State for At86Rf23x<B>
 where
-    B: Base<SpiErr, PinErr, DelayErr>,
-    SpiErr: Debug,
-    PinErr: Debug,
-    DelayErr: Debug,
+    B: Base,
 {
     type State = State;
-    type Error = Error<SpiErr, PinErr, DelayErr>;
+    type Error = Error<B::SpiErr, B::PinErr, B::DelayErr>;
 
     fn set_state(&mut self, s: State) -> Result<(), Self::Error> {
         // Convert requested state to commands
@@ -330,16 +361,14 @@ where
     }
 }
 
-impl<B, SpiErr, PinErr, DelayErr> radio::Interrupts for At86Rf23x<B, SpiErr, PinErr, DelayErr>
+impl<B> radio::Interrupts for At86Rf23x<B>
 where
-    B: Base<SpiErr, PinErr, DelayErr>,
-    SpiErr: Debug,
-    PinErr: Debug,
-    DelayErr: Debug,
+    B: Base,
 {
     type Irq = Irqs;
-    type Error = Error<SpiErr, PinErr, DelayErr>;
+    type Error = Error<B::SpiErr, B::PinErr, B::DelayErr>;
 
+    /// Read interrupts, flags are always cleared on read
     fn get_interrupts(&mut self, _: bool) -> Result<Self::Irq, Self::Error> {
         let irqs = self.read_register::<Irqs>()?;
 
@@ -361,18 +390,35 @@ pub struct Ch {
     pub channel: Channel,
 }
 
-impl<B, SpiErr, PinErr, DelayErr> radio::Channel for At86Rf23x<B, SpiErr, PinErr, DelayErr>
+#[cfg(feature="common-modulation")]
+impl TryFrom<radio::modulation::gfsk::GfskChannel> for Ch {
+    type Error = radio::modulation::ModError;
+
+    fn try_from(ch: radio::modulation::gfsk::GfskChannel) -> Result<Self, Self::Error> {
+        use radio::modulation::ModError;
+
+        let bitrate = OqpskDataRate::try_from(ch.bitrate_bps)
+                .map_err(|_| ModError::UnsupportedBitrate)?;
+
+        let channel = Channel::try_from(ch.freq_khz)
+                .map_err(|_| ModError::UnsupportedFrequency)?;
+
+        if ch.bw_khz != 5 {
+            return Err(ModError::UnsupportedBandwidth);
+        }
+
+        Ok(Ch{ bitrate, channel })
+    }
+}
+
+impl<B> radio::Channel for At86Rf23x<B>
 where
-    B: Base<SpiErr, PinErr, DelayErr>,
-    SpiErr: Debug,
-    PinErr: Debug,
-    DelayErr: Debug,
+    B: Base,
 {
     type Channel = Ch;
+    type Error = Error<B::SpiErr, B::PinErr, B::DelayErr>;
 
-    type Error = Error<SpiErr, PinErr, DelayErr>;
-
-    fn set_channel(&mut self, ch: &Self::Channel) -> Result<(), Self::Error> {
+    fn set_channel(&mut self, ch: &Ch) -> Result<(), Self::Error> {
         // Ensure we're idle
         self.set_state(State::PllOn)?;
 
@@ -388,28 +434,22 @@ where
     }
 }
 
-impl<B, SpiErr, PinErr, DelayErr> DelayUs<u32> for At86Rf23x<B, SpiErr, PinErr, DelayErr>
+impl<B> DelayUs for At86Rf23x<B>
 where
-    B: Base<SpiErr, PinErr, DelayErr>,
-    SpiErr: Debug,
-    PinErr: Debug,
-    DelayErr: Debug,
+    B: Base,
 {
-    type Error = Error<SpiErr, PinErr, DelayErr>;
+    type Error = Error<B::SpiErr, B::PinErr, B::DelayErr>;
 
     fn delay_us(&mut self, us: u32) -> Result<(), Self::Error> {
         self.hal.delay_us(us)
     }
 }
 
-impl<B, SpiErr, PinErr, DelayErr> radio::Power for At86Rf23x<B, SpiErr, PinErr, DelayErr>
+impl<B> radio::Power for At86Rf23x<B>
 where
-    B: Base<SpiErr, PinErr, DelayErr>,
-    SpiErr: Debug,
-    PinErr: Debug,
-    DelayErr: Debug,
+    B: Base,
 {
-    type Error = Error<SpiErr, PinErr, DelayErr>;
+    type Error = Error<B::SpiErr, B::PinErr, B::DelayErr>;
 
     fn set_power(&mut self, _power: i8) -> Result<(), Self::Error> {
         // TODO: convert power from int to nearest power value
@@ -422,28 +462,22 @@ where
     }
 }
 
-impl<B, SpiErr, PinErr, DelayErr> radio::Rssi for At86Rf23x<B, SpiErr, PinErr, DelayErr>
+impl<B> radio::Rssi for At86Rf23x<B>
 where
-    B: Base<SpiErr, PinErr, DelayErr>,
-    SpiErr: Debug,
-    PinErr: Debug,
-    DelayErr: Debug,
+    B: Base,
 {
-    type Error = Error<SpiErr, PinErr, DelayErr>;
+    type Error = Error<B::SpiErr, B::PinErr, B::DelayErr>;
 
     fn poll_rssi(&mut self) -> Result<i16, Self::Error> {
         let r = self.read_register::<PhyRssi>()?;
         Ok(-94 + r.rssi() as i16 * 3)
     }
 }
-impl<B, SpiErr, PinErr, DelayErr> radio::Transmit for At86Rf23x<B, SpiErr, PinErr, DelayErr>
+impl<B> radio::Transmit for At86Rf23x<B>
 where
-    B: Base<SpiErr, PinErr, DelayErr>,
-    SpiErr: Debug,
-    PinErr: Debug,
-    DelayErr: Debug,
+    B: Base,
 {
-    type Error = Error<SpiErr, PinErr, DelayErr>;
+    type Error = Error<B::SpiErr, B::PinErr, B::DelayErr>;
 
     fn start_transmit(&mut self, data: &[u8]) -> Result<(), Self::Error> {
         // Ensure we're idle and the PLL is on
@@ -509,14 +543,11 @@ where
     }
 }
 
-impl<B, SpiErr, PinErr, DelayErr> radio::Receive for At86Rf23x<B, SpiErr, PinErr, DelayErr>
+impl<B> radio::Receive for At86Rf23x<B>
 where
-    B: Base<SpiErr, PinErr, DelayErr>,
-    SpiErr: Debug,
-    PinErr: Debug,
-    DelayErr: Debug,
+    B: Base,
 {
-    type Error = Error<SpiErr, PinErr, DelayErr>;
+    type Error = Error<B::SpiErr, B::PinErr, B::DelayErr>;
 
     type Info = BasicInfo;
 
