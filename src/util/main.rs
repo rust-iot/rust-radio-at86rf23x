@@ -1,6 +1,6 @@
 extern crate std;
 
-use log::{debug, error, info, trace};
+use log::{debug, error, info};
 use structopt::StructOpt;
 
 use tracing_subscriber::filter::{EnvFilter, LevelFilter};
@@ -15,9 +15,6 @@ use radio_at86rf23x::prelude::*;
 
 type Radio = At86Rf23x<
     Io<HalSpi, HalOutputPin, HalOutputPin, HalOutputPin, HalInputPin, HalDelay>,
-    HalError,
-    HalError,
-    HalError,
 >;
 
 #[derive(Debug, PartialEq, Clone, StructOpt)]
