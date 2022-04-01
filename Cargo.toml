@@ -4,7 +4,7 @@ description = "Driver for the Microchip at86rf23x series of 2.4GHz RF ICs"
 repository = "https://github.com/rust-iot/rust-radio-at86rf23x"
 authors = ["Ryan Kurte <ryankurte@gmail.com>"]
 license = "MPL-2.0"
-version = "0.1.0"
+version = "0.2.0"
 edition = "2021"
 
 [features]
